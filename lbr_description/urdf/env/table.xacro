@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="robot_table">
+        <xacro:property name="height" value="0.775"/>
+        <xacro:property name="length" value="1.2"/>
+        <xacro:property name="width" value="0.8"/>
+        <xacro:property name="screw_displace" value="0.125"/>
+
+        <link name="table_top">
+            <inertial>
+                <origin xyz="0 0 ${height/2}"/>
+                <mass value="10" />
+                <inertia  ixx="0.01" ixy="0.0"  ixz="0.0"  iyy="0.01"  iyz="0.0"  izz="0.01" />
+            </inertial>
+            <visual>
+                <origin xyz="0 0 ${height/2}"/>
+                <geometry>
+                    <box size="${length} ${width} ${height}"/>
+                </geometry>
+            </visual>
+            <collision>
+                <origin xyz="0 0 ${height/2}"/>
+                <geometry>
+                    <box size="${length} ${width} ${height}"/>
+                </geometry>
+            </collision>
+        </link>
+
+        <gazebo reference="table_top">
+            <!-- <material>Gazebo/Wood</material> -->
+            <static>true</static>
+        </gazebo>
+
+        <link name="screw_holes_set1">
+            <visual>
+                <geometry>
+                    <box size="${screw_displace} ${screw_displace} 0.2"/>
+                </geometry>
+            </visual>
+        </link>
+        
+        <link name="screw_holes_set2">
+            <visual>
+                <geometry>
+                    <box size="${screw_displace} ${screw_displace} 0.2"/>
+                </geometry>
+            </visual>
+        </link>
+
+        <joint name="screw_1" type="fixed">
+            <parent link="table_top"/>
+            <child link="screw_holes_set1"/>
+            <origin rpy="0 0 0" xyz="${length/2 - screw_displace} 0 ${height}"/>
+        </joint>
+
+        <joint name="screw_2" type="fixed">
+            <parent link="table_top"/>
+            <child link="screw_holes_set2"/>
+            <origin rpy="0 0 0" xyz="${-length/2 + screw_displace} 0 ${height}"/>
+        </joint>
+    </xacro:macro>
+</robot>

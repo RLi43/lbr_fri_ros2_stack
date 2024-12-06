@@ -15,7 +15,7 @@ class LBRDescriptionMixin:
     @staticmethod
     def param_robot_description(
         model: Optional[Union[LaunchConfiguration, str]] = LaunchConfiguration(
-            "model", default="iiwa7"
+            "model", default="med7"
         ),
         robot_name: Optional[Union[LaunchConfiguration, str]] = LaunchConfiguration(
             "robot_name", default="lbr"
@@ -45,24 +45,24 @@ class LBRDescriptionMixin:
                         [
                             FindPackageShare("lbr_description"),
                             "urdf",
-                            model,
-                            model,
+                            'tabled_robot.xacro'
                         ]
                     ),
-                    ".xacro",
                     " robot_name:=",
                     robot_name,
                     " mode:=",
                     mode,
                     " system_config_path:=",
                     system_config_path,
+                    " model:=",
+                    model
                 ]
             )
         }
         return robot_description
 
     @staticmethod
-    def arg_model(default_value: str = "iiwa7") -> DeclareLaunchArgument:
+    def arg_model(default_value: str = "med7") -> DeclareLaunchArgument:
         return DeclareLaunchArgument(
             name="model",
             default_value=default_value,
@@ -76,6 +76,14 @@ class LBRDescriptionMixin:
             name="robot_name",
             default_value=default_value,
             description="The robot's name.",
+        )
+    
+    @staticmethod
+    def arg_world_name(default_value: str = "empty.sdf") -> DeclareLaunchArgument:
+        return DeclareLaunchArgument(
+            name="world_name",
+            default_value=default_value,
+            description="Gazebo simulation world filename in lbr_description/gazebo",
         )
 
     @staticmethod

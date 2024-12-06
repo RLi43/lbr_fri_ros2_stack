@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -10,6 +10,17 @@ from launch_ros.substitutions import FindPackageShare
 class GazeboMixin:
     @staticmethod
     def include_gazebo(**kwargs) -> IncludeLaunchDescription:
+        gz_args = [
+            "-r ",
+            PathJoinSubstitution(
+                            [
+                                FindPackageShare('lbr_description'),
+                                'gazebo',
+                                LaunchConfiguration("world_name")
+                            ]
+                        )
+        ]
+                
         return IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 PathJoinSubstitution(
@@ -20,7 +31,9 @@ class GazeboMixin:
                     ]
                 ),
             ),
-            launch_arguments={"gz_args": "-r empty.sdf"}.items(),
+            launch_arguments={"gz_args": 
+                              gz_args
+                              }.items(),
             **kwargs,
         )
 

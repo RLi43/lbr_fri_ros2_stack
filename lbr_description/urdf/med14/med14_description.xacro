@@ -2,7 +2,7 @@
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
     <!-- robot as extracted via https://github.com/syuntoku14/fusion2urdf -->
-    <xacro:macro name="med14"
+    <xacro:macro name="lbr_robot"
         params="robot_name:=^|lbr mode:=^|mock system_config_path:=^|'$(find lbr_description)/ros2_control/lbr_system_config.yaml'">
 
         <!-- includes -->

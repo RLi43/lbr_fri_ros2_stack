@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<robot name="tabled_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- table -->
+    <xacro:arg name="screw_set" default="2"/>
+    <xacro:include filename="$(find lbr_description)/urdf/env/table.xacro"/>
+    <xacro:robot_table/>
+
+    <!-- robot -->
+    <xacro:arg name="robot_name" default="lbr"/>
+    <xacro:arg name="model" default="med7"/>
+    <xacro:arg name="mode" default="true" />
+    <xacro:arg
+        name="system_config_path"
+        default="$(find lbr_description)/ros2_control/lbr_system_config.yaml" />
+    
+    <xacro:include filename="$(find lbr_description)/urdf/$(arg model)/$(arg model)_description.xacro" />
+
+    <xacro:lbr_robot
+        robot_name="$(arg robot_name)"
+        mode="$(arg mode)"
+        system_config_path="$(arg system_config_path)"
+    />
+    
+    <!-- KDL requires a link without inertia -->
+    <link name="$(arg robot_name)_floating_link" />
+    <joint name="$(arg robot_name)_floating_joint" type="fixed">
+        <parent link="$(arg robot_name)_floating_link" />
+        <child link="$(arg robot_name)_link_0" />
+    </joint>
+
+    <joint name="fix_robot_on_table" type="fixed">
+        <parent link="screw_holes_set$(arg screw_set)"/>
+        <child link="$(arg robot_name)_floating_link"/>
+    </joint>
+
+</robot>
