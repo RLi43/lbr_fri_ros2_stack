@@ -18,26 +18,49 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
   }
 
   // setup driver
-  lbr_fri_ros2::CommandGuardParameters command_guard_parameters;
   lbr_fri_ros2::StateInterfaceParameters state_interface_parameters;
-  for (std::size_t idx = 0; idx < system_info.joints.size(); ++idx) {
-    command_guard_parameters.joint_names[idx] = system_info.joints[idx].name;
-    command_guard_parameters.max_positions[idx] =
-        std::stod(system_info.joints[idx].parameters.at("max_position"));
-    command_guard_parameters.min_positions[idx] =
-        std::stod(system_info.joints[idx].parameters.at("min_position"));
-    command_guard_parameters.max_velocities[idx] =
-        std::stod(system_info.joints[idx].parameters.at("max_velocity"));
-    command_guard_parameters.max_torques[idx] =
-        std::stod(system_info.joints[idx].parameters.at("max_torque"));
-  }
   state_interface_parameters.external_torque_tau = parameters_.external_torque_tau;
   state_interface_parameters.measured_torque_tau = parameters_.measured_torque_tau;
 
   try {
-    async_client_ptr_ = std::make_shared<lbr_fri_ros2::AsyncClient>(
-        parameters_.client_command_mode, parameters_.joint_position_tau, command_guard_parameters,
-        parameters_.command_guard_variant, state_interface_parameters, parameters_.open_loop);
+    if(parameters_.joint_overlay){
+      lbr_fri_ros2::CommandGuardParametersJoint cgpj;
+      for (std::size_t idx = 0; idx < system_info.joints.size(); ++idx) {
+        cgpj.joint_names[idx] = system_info.joints[idx].name;
+        cgpj.max_positions[idx] =
+            std::stod(system_info.joints[idx].parameters.at("max_position"));
+        cgpj.min_positions[idx] =
+            std::stod(system_info.joints[idx].parameters.at("min_position"));
+        cgpj.max_velocities[idx] =
+            std::stod(system_info.joints[idx].parameters.at("max_velocity"));
+        cgpj.max_torques[idx] =
+            std::stod(system_info.joints[idx].parameters.at("max_torque"));
+      }
+      async_client_ptr_ = std::make_shared<lbr_fri_ros2::AsyncClient>(
+          parameters_.client_command_mode, parameters_.joint_position_tau, 
+          cgpj,
+          parameters_.command_guard_variant, 
+          state_interface_parameters, parameters_.open_loop);
+    }else{
+      lbr_fri_ros2::CommandGuardParametersCartesian cgpc;
+      // TODO: pose as matrix
+
+      for (std::size_t idx = 0; idx < 3; ++idx) {
+        // TODO: this substr(1) operation is stupid
+        cgpc.max_positions[idx] = std::stod(system_info.gpios[CART_GPIO_IDX].command_interfaces[idx].max.substr(1));
+        cgpc.min_positions[idx] = std::stod(system_info.gpios[CART_GPIO_IDX].command_interfaces[idx].min.substr(1));
+      }
+      cgpc.max_trans_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_trans_vel").substr(1));
+      cgpc.max_trans_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_trans_acc").substr(1));
+      cgpc.max_rot_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_vel").substr(1));
+      cgpc.max_rot_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_acc").substr(1));
+
+      async_client_ptr_ = std::make_shared<lbr_fri_ros2::AsyncClient>(
+          cgpc,
+          parameters_.command_guard_variant, 
+          parameters_.use_cartesian_matrix, 
+          state_interface_parameters, parameters_.open_loop);
+    }
     app_ptr_ = std::make_unique<lbr_fri_ros2::App>(async_client_ptr_);
   } catch (const std::exception &e) {
     RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
@@ -126,9 +149,9 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
 
     state_interfaces.emplace_back(info_.joints[i].name, HW_IF_EXTERNAL_TORQUE,
                                   &hw_lbr_state_.external_torque[i]);
-
-    state_interfaces.emplace_back(info_.joints[i].name, HW_IF_IPO_JOINT_POSITION,
-                                  &hw_lbr_state_.ipo_joint_position[i]);
+    // TODO: Switch between JointOverlay and CartesianOverlay
+    // state_interfaces.emplace_back(info_.joints[i].name, HW_IF_IPO_JOINT_POSITION,
+    //                               &hw_lbr_state_.ipo_joint_position[i]);
 
     // additional velocity state interface
     state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_VELOCITY,
@@ -152,6 +175,7 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
                                 &hw_client_command_mode_);
   state_interfaces.emplace_back(auxiliary_sensor.name, HW_IF_OVERLAY_TYPE, &hw_overlay_type_);
   state_interfaces.emplace_back(auxiliary_sensor.name, HW_IF_CONTROL_MODE, &hw_control_mode_);
+  state_interfaces.emplace_back(auxiliary_sensor.name, HW_IF_REDUNDANCY_STRATEGY, &hw_redundancy_strategy_);
 
   state_interfaces.emplace_back(auxiliary_sensor.name, HW_IF_TIME_STAMP_SEC, &hw_time_stamp_sec_);
   state_interfaces.emplace_back(auxiliary_sensor.name, HW_IF_TIME_STAMP_NANO_SEC,
@@ -166,6 +190,46 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
     state_interfaces.emplace_back(estimated_ft_sensor.name, HW_IF_TORQUE_X, &hw_ft_[3]);
     state_interfaces.emplace_back(estimated_ft_sensor.name, HW_IF_TORQUE_Y, &hw_ft_[4]);
     state_interfaces.emplace_back(estimated_ft_sensor.name, HW_IF_TORQUE_Z, &hw_ft_[5]);
+  }
+
+  // Cartesian Interface
+  if (cart_parameters_.enabled){
+    const auto &cart_gpio = info_.gpios[CART_GPIO_IDX];
+    const auto &cart_sensor = info_.sensors[CART_SENSOR_IDX];
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_X,
+                                  &hw_lbr_state_.measured_cartesian_pose[0]);
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_Y,
+                                  &hw_lbr_state_.measured_cartesian_pose[1]);
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_Z,
+                                  &hw_lbr_state_.measured_cartesian_pose[2]);
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QW,
+                                  &hw_lbr_state_.measured_cartesian_pose[3]);
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QX,
+                                  &hw_lbr_state_.measured_cartesian_pose[4]);
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QY,
+                                  &hw_lbr_state_.measured_cartesian_pose[5]);
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QZ,
+                                  &hw_lbr_state_.measured_cartesian_pose[6]);
+    // state_interfaces.emplace_back(cart_gpio.name, HW_IF_MEASURED_REDUNDANCY_VALUE,
+    //                               &hw_lbr_state_.measured_redundancy_value);
+
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_X,
+                                  &hw_lbr_state_.ipo_cartesian_pose[0]);
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_Y,
+                                  &hw_lbr_state_.ipo_cartesian_pose[1]);
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_Z,
+                                  &hw_lbr_state_.ipo_cartesian_pose[2]);
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_QW,
+                                  &hw_lbr_state_.ipo_cartesian_pose[3]);
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_QX,
+                                  &hw_lbr_state_.ipo_cartesian_pose[4]);
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_QY,
+                                  &hw_lbr_state_.ipo_cartesian_pose[5]);
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_QZ,
+                                  &hw_lbr_state_.ipo_cartesian_pose[6]);
+
+    // state_interfaces.emplace_back(cart_gpio.name, HW_IF_MEASURED_REDUNDANCY_VALUE,
+    //                               &hw_lbr_state_.ipo_redundancy_value);
   }
 
   return state_interfaces;
@@ -189,6 +253,18 @@ std::vector<hardware_interface::CommandInterface> SystemInterface::export_comman
   command_interfaces.emplace_back(wrench.name, HW_IF_TORQUE_X, &hw_lbr_command_.wrench[3]);
   command_interfaces.emplace_back(wrench.name, HW_IF_TORQUE_Y, &hw_lbr_command_.wrench[4]);
   command_interfaces.emplace_back(wrench.name, HW_IF_TORQUE_Z, &hw_lbr_command_.wrench[5]);
+
+  // TODO: command_interface order matters?
+  if(cart_parameters_.enabled){
+    const auto &cart = info_.gpios[CART_GPIO_IDX];
+    command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_X, &hw_lbr_command_.cartesian_pose[0]);
+    command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_Y, &hw_lbr_command_.cartesian_pose[1]);
+    command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_Z, &hw_lbr_command_.cartesian_pose[2]);
+    command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_QW, &hw_lbr_command_.cartesian_pose[3]);
+    command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_QX, &hw_lbr_command_.cartesian_pose[4]);
+    command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_QY, &hw_lbr_command_.cartesian_pose[5]);
+    command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_QZ, &hw_lbr_command_.cartesian_pose[6]);
+  }
   return command_interfaces;
 }
 
@@ -320,6 +396,10 @@ hardware_interface::return_type SystemInterface::read(const rclcpp::Time & /*tim
   hw_time_stamp_sec_ = static_cast<double>(hw_lbr_state_.time_stamp_sec);
   hw_time_stamp_nano_sec_ = static_cast<double>(hw_lbr_state_.time_stamp_nano_sec);
 
+  // TODO:
+  // cartesian pose
+  // calculate from joint position?
+
   // additional velocity state interface
   compute_hw_velocity_();
   update_last_hw_states_();
@@ -372,11 +452,23 @@ bool SystemInterface::parse_parameters_(const hardware_interface::HardwareInfo &
       parameters_.client_command_mode = KUKA::FRI::EClientCommandMode::TORQUE;
     } else if (client_command_mode == "wrench") {
       parameters_.client_command_mode = KUKA::FRI::EClientCommandMode::WRENCH;
-    } else {
+    } else if (client_command_mode == "cartesian"){
+      parameters_.client_command_mode = KUKA::FRI::EClientCommandMode::CARTESIAN_POSE;
+      parameters_.joint_overlay = false;
+    //   parameters_.use_cartesian_matrix = false;
+    } 
+    // else if (client_command_mode == "cartesian_pose"){
+    //   parameters_.client_command_mode = KUKA::FRI::EClientCommandMode::CARTESIAN_POSE;
+    //   parameters_.use_cartesian_matrix = false;
+    // } else if (client_command_mode == "cartesian_matrix"){
+    //   parameters_.client_command_mode = KUKA::FRI::EClientCommandMode::CARTESIAN_POSE;
+    //   parameters_.use_cartesian_matrix = true;
+    // }
+    else {
       RCLCPP_ERROR_STREAM(
           rclcpp::get_logger(LOGGER_NAME),
           lbr_fri_ros2::ColorScheme::ERROR
-              << "Expected client_command_mode 'position', 'torque' or 'wrench', got '"
+              << "Expected client_command_mode 'position', 'torque', 'wrench' or 'cartesian<_pose, _matrix>' got '"
               << lbr_fri_ros2::ColorScheme::BOLD << parameters_.client_command_mode << "'"
               << lbr_fri_ros2::ColorScheme::ENDC);
       return false;
@@ -419,6 +511,7 @@ bool SystemInterface::parse_parameters_(const hardware_interface::HardwareInfo &
 
 void SystemInterface::nan_command_interfaces_() {
   hw_lbr_command_.joint_position.fill(std::numeric_limits<double>::quiet_NaN());
+  hw_lbr_command_.cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_command_.torque.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_command_.wrench.fill(std::numeric_limits<double>::quiet_NaN());
 }
@@ -432,7 +525,11 @@ void SystemInterface::nan_state_interfaces_() {
   hw_lbr_state_.measured_torque.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_state_.commanded_torque.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_state_.external_torque.fill(std::numeric_limits<double>::quiet_NaN());
-  hw_lbr_state_.ipo_joint_position.fill(std::numeric_limits<double>::quiet_NaN());
+  // TODO: Switch Overlay
+  // hw_lbr_state_.ipo_joint_position.fill(std::numeric_limits<double>::quiet_NaN());
+  hw_lbr_state_.ipo_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
+  hw_lbr_state_.measured_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
+
   hw_lbr_state_.sample_time = std::numeric_limits<double>::quiet_NaN();
   hw_lbr_state_.tracking_performance = std::numeric_limits<double>::quiet_NaN();
 
@@ -544,10 +641,32 @@ bool SystemInterface::verify_sensors_() {
   if (!verify_auxiliary_sensor_()) {
     return false;
   }
+  
   if (ft_parameters_.enabled) {
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                      lbr_fri_ros2::ColorScheme::OKBLUE
+                          << "Force-Torque Sensor is enabled." << lbr_fri_ros2::ColorScheme::ENDC);
     if (!verify_estimated_ft_sensor_()) {
       return false;
     }
+  }
+  else{    
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                      lbr_fri_ros2::ColorScheme::OKBLUE
+                          << "Force-Torque Sensor is not enabled." << lbr_fri_ros2::ColorScheme::ENDC);
+  }
+  if (cart_parameters_.enabled) {
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                      lbr_fri_ros2::ColorScheme::OKBLUE
+                          << "Cartesian Sensor is enabled." << lbr_fri_ros2::ColorScheme::ENDC);
+    if (!verify_cartesian_sensor_()) {
+      return false;
+    }
+  }
+  else{    
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                      lbr_fri_ros2::ColorScheme::OKBLUE
+                          << "Force-Torque Sensor is not enabled." << lbr_fri_ros2::ColorScheme::ENDC);
   }
   return true;
 }
@@ -583,7 +702,8 @@ bool SystemInterface::verify_auxiliary_sensor_() {
         si.name != HW_IF_CONTROL_MODE && si.name != HW_IF_TIME_STAMP_SEC &&
         si.name != HW_IF_TIME_STAMP_NANO_SEC && si.name != HW_IF_COMMANDED_JOINT_POSITION &&
         si.name != HW_IF_COMMANDED_TORQUE && si.name != HW_IF_EXTERNAL_TORQUE &&
-        si.name != HW_IF_IPO_JOINT_POSITION && si.name != HW_IF_TRACKING_PERFORMANCE) {
+        si.name != HW_IF_IPO_JOINT_POSITION && si.name != HW_IF_TRACKING_PERFORMANCE &&
+        si.name != HW_IF_REDUNDANCY_STRATEGY) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                           lbr_fri_ros2::ColorScheme::ERROR
                               << "Sensor '" << auxiliary_sensor.name.c_str()
@@ -630,14 +750,96 @@ bool SystemInterface::verify_estimated_ft_sensor_() {
   return true;
 }
 
-bool SystemInterface::verify_gpios_() {
-  if (info_.gpios.size() != GPIO_SIZE) {
+bool SystemInterface::verify_cartesian_sensor_(){
+  const auto& cart_sensor = info_.sensors[CART_SENSOR_IDX];
+  if (cart_sensor.name != HW_IF_CARTESIAN_SENSOR_PREFIX) {
     RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
-                        lbr_fri_ros2::ColorScheme::ERROR
-                            << "Expected '" << static_cast<int>(GPIO_SIZE) << "' GPIOs, got '"
-                            << info_.gpios.size() << "'" << lbr_fri_ros2::ColorScheme::ENDC);
+                        lbr_fri_ros2::ColorScheme::ERROR << "GPIO '" << cart_sensor.name.c_str()
+                                                         << "' received invalid name. Expected '"
+                                                         << HW_IF_CARTESIAN_SENSOR_PREFIX << "'"
+                                                         << lbr_fri_ros2::ColorScheme::ENDC);
     return false;
   }
+  // TODO: support for pose as matrix
+
+  // check only valid interfaces are defined
+  for (const auto &si : cart_sensor.state_interfaces) {
+    if (si.name != HW_IF_MEASURED_CARTESIAN_POSE_X && si.name != HW_IF_MEASURED_CARTESIAN_POSE_Y && si.name != HW_IF_MEASURED_CARTESIAN_POSE_Z &&
+        si.name != HW_IF_MEASURED_CARTESIAN_POSE_QX && si.name != HW_IF_MEASURED_CARTESIAN_POSE_QY && si.name != HW_IF_MEASURED_CARTESIAN_POSE_QZ &&
+        si.name != HW_IF_MEASURED_CARTESIAN_POSE_QW 
+        // && si.name != HW_IF_REDUNDANCY_VALUE_CONTROLLED && si.name != HW_IF_REDUNDANCY_VALUE
+        ) {
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                          lbr_fri_ros2::ColorScheme::ERROR
+                              << "Sensor '" << cart_sensor.name.c_str()
+                              << "' received invalid state interface '" << si.name.c_str() << "'"
+                              << lbr_fri_ros2::ColorScheme::ENDC);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool SystemInterface::verify_cartesian_gpio_(){
+  const auto& cart_gpio = info_.gpios[CART_GPIO_IDX];
+  if (cart_gpio.name != HW_IF_CARTESIAN_GPIO_PREFIX) {
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                        lbr_fri_ros2::ColorScheme::ERROR << "GPIO '" << cart_gpio.name.c_str()
+                                                         << "' received invalid name. Expected '"
+                                                         << HW_IF_CARTESIAN_GPIO_PREFIX << "'"
+                                                         << lbr_fri_ros2::ColorScheme::ENDC);
+    return false;
+  }
+  // TODO: support for pose as matrix
+
+  // command interface
+  if (cart_gpio.command_interfaces.size() != hw_lbr_command_.cartesian_pose.size()) {
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                        lbr_fri_ros2::ColorScheme::ERROR
+                            << "GPIO '" << cart_gpio.name.c_str()
+                            << "' received invalid number of command interfaces. Received '"
+                            << cart_gpio.command_interfaces.size() << "', expected '"
+                            << hw_lbr_command_.cartesian_pose.size() << "'"
+                            << lbr_fri_ros2::ColorScheme::ENDC);
+    return false;
+  }
+  for (const auto &si : cart_gpio.command_interfaces) {
+    if (si.name != HW_IF_CARTESIAN_POSE_X && si.name != HW_IF_CARTESIAN_POSE_Y && si.name != HW_IF_CARTESIAN_POSE_Z &&
+        si.name != HW_IF_CARTESIAN_POSE_QX && si.name != HW_IF_CARTESIAN_POSE_QY && si.name != HW_IF_CARTESIAN_POSE_QZ &&
+        si.name != HW_IF_CARTESIAN_POSE_QW
+        // && si.name != HW_IF_REDUNDANCY_VALUE_CONTROLLED && si.name != HW_IF_REDUNDANCY_VALUE
+        ) {
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                          lbr_fri_ros2::ColorScheme::ERROR
+                              << "GPIO '" << cart_gpio.name.c_str()
+                              << "' received invalid state interface '" << si.name.c_str() << "'"
+                              << lbr_fri_ros2::ColorScheme::ENDC);
+      return false;
+    }
+  }
+
+  // state interface
+  // check only valid interfaces are defined
+  for (const auto &si : cart_gpio.state_interfaces) {
+    if (si.name != HW_IF_IPO_CARTESIAN_POSE_X && si.name != HW_IF_IPO_CARTESIAN_POSE_Y && si.name != HW_IF_IPO_CARTESIAN_POSE_Z &&
+        si.name != HW_IF_IPO_CARTESIAN_POSE_QX && si.name != HW_IF_IPO_CARTESIAN_POSE_QY && si.name != HW_IF_IPO_CARTESIAN_POSE_QZ &&
+        si.name != HW_IF_IPO_CARTESIAN_POSE_QW 
+        // && si.name != HW_IF_REDUNDANCY_VALUE_CONTROLLED && si.name != HW_IF_REDUNDANCY_VALUE
+        ) {
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                          lbr_fri_ros2::ColorScheme::ERROR
+                              << "GPIO '" << cart_gpio.name.c_str()
+                              << "' received invalid state interface '" << si.name.c_str() << "'"
+                              << lbr_fri_ros2::ColorScheme::ENDC);
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+bool SystemInterface::verify_wrench_gpio_() {
   if (info_.gpios[0].name != HW_IF_WRENCH_PREFIX) {
     RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                         lbr_fri_ros2::ColorScheme::ERROR << "GPIO '" << info_.gpios[0].name.c_str()
@@ -655,6 +857,34 @@ bool SystemInterface::verify_gpios_() {
                             << hw_lbr_command_.wrench.size() << "'"
                             << lbr_fri_ros2::ColorScheme::ENDC);
     return false;
+  }
+  return true;
+}
+
+bool SystemInterface::verify_gpios_(){
+  // check lbr specific state interfaces
+  if (info_.gpios.size() != LBR_FRI_GPIOS) {
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                        lbr_fri_ros2::ColorScheme::ERROR
+                            << "Expected '" << static_cast<int>(LBR_FRI_GPIOS)
+                            << "' gpios, got '" << info_.gpios.size() << "'"
+                            << lbr_fri_ros2::ColorScheme::ENDC);
+    return false;
+  }
+  if (!verify_wrench_gpio_()) {
+    return false;
+  }
+  if (cart_parameters_.enabled) {
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                        lbr_fri_ros2::ColorScheme::OKBLUE
+                            << "Cartesian GPIO is enabled" << lbr_fri_ros2::ColorScheme::ENDC);
+    if (!verify_cartesian_gpio_()) {
+      return false;
+    }
+  }else{    
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                        lbr_fri_ros2::ColorScheme::OKBLUE
+                            << "Cartesian GPIO is not enabled" << lbr_fri_ros2::ColorScheme::ENDC);
   }
   return true;
 }

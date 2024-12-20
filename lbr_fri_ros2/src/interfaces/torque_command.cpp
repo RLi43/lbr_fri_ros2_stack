@@ -2,9 +2,9 @@
 
 namespace lbr_fri_ros2 {
 TorqueCommandInterface::TorqueCommandInterface(
-    const double &joint_position_tau, const CommandGuardParameters &command_guard_parameters,
+    const double &joint_position_tau, const CommandGuardParametersJoint &command_guard_parameters,
     const std::string &command_guard_variant)
-    : BaseCommandInterface(joint_position_tau, command_guard_parameters, command_guard_variant) {}
+    : BaseJointCommandInterface(joint_position_tau, command_guard_parameters, command_guard_variant) {}
 
 void TorqueCommandInterface::buffered_command_to_fri(fri_command_t_ref command,
                                                      const_idl_state_t_ref state) {

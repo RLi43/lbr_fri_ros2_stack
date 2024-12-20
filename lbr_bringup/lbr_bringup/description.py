@@ -9,6 +9,7 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+import launch_ros.descriptions
 
 
 class LBRDescriptionMixin:
@@ -37,8 +38,10 @@ class LBRDescriptionMixin:
         ),
     ) -> Dict[str, str]:
         robot_description = {
-            "robot_description": Command(
-                [
+            "robot_description": 
+            launch_ros.descriptions.ParameterValue
+            (
+                Command([
                     FindExecutable(name="xacro"),
                     " ",
                     PathJoinSubstitution(
@@ -56,7 +59,7 @@ class LBRDescriptionMixin:
                     system_config_path,
                     " model:=",
                     model
-                ]
+                ])
             )
         }
         return robot_description

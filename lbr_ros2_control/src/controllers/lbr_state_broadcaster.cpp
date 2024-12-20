@@ -70,6 +70,8 @@ controller_interface::return_type LBRStateBroadcaster::update(const rclcpp::Time
         static_cast<uint32_t>(state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_TIME_STAMP_SEC]);
     rt_state_publisher_ptr_->msg_.tracking_performance =
         state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_TRACKING_PERFORMANCE];
+    rt_state_publisher_ptr_->msg_.redundancy_strategy =
+        static_cast<int8_t>(state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_REDUNDANCY_STRATEGY]);
 
     // joint related states
     std::for_each(joint_names_.begin(), joint_names_.end(),
@@ -82,21 +84,61 @@ controller_interface::return_type LBRStateBroadcaster::update(const rclcpp::Time
                         state_interface_map_[joint_name][HW_IF_COMMANDED_TORQUE];
                     rt_state_publisher_ptr_->msg_.external_torque[idx] =
                         state_interface_map_[joint_name][HW_IF_EXTERNAL_TORQUE];
-                    if (rt_state_publisher_ptr_->msg_.session_state == KUKA::FRI::COMMANDING_WAIT ||
-                        rt_state_publisher_ptr_->msg_.session_state ==
-                            KUKA::FRI::COMMANDING_ACTIVE) {
-                      rt_state_publisher_ptr_->msg_.ipo_joint_position[idx] =
-                          state_interface_map_[joint_name][HW_IF_IPO_JOINT_POSITION];
-                    } else {
-                      rt_state_publisher_ptr_->msg_.ipo_joint_position[idx] =
-                          std::numeric_limits<double>::quiet_NaN();
-                    }
+                    // // TODO: switch bewteen overlays
+                    // if (rt_state_publisher_ptr_->msg_.session_state == KUKA::FRI::COMMANDING_WAIT ||
+                    //     rt_state_publisher_ptr_->msg_.session_state ==
+                    //         KUKA::FRI::COMMANDING_ACTIVE) {
+                    //   rt_state_publisher_ptr_->msg_.ipo_joint_position[idx] =
+                    //       state_interface_map_[joint_name][HW_IF_IPO_JOINT_POSITION];
+                    // } else {
+                    //   rt_state_publisher_ptr_->msg_.ipo_joint_position[idx] =
+                    //       std::numeric_limits<double>::quiet_NaN();
+                    // }
                     rt_state_publisher_ptr_->msg_.measured_joint_position[idx] =
                         state_interface_map_[joint_name][hardware_interface::HW_IF_POSITION];
                     rt_state_publisher_ptr_->msg_.measured_torque[idx] =
                         state_interface_map_[joint_name][hardware_interface::HW_IF_EFFORT];
                     ++idx;
                   });
+
+    if (rt_state_publisher_ptr_->msg_.session_state == KUKA::FRI::COMMANDING_WAIT ||
+                        rt_state_publisher_ptr_->msg_.session_state ==
+                            KUKA::FRI::COMMANDING_ACTIVE) {
+    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[0] = 
+            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QX];
+    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[1] = 
+            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_Y];
+    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[2] = 
+            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_Z];
+    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[3] = 
+            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QW];
+    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[4] = 
+            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QX];
+    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[5] = 
+            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QY];
+    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[6] = 
+            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QZ];
+    }else{
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
+    }
+    
+    // TODO: controlled by settings
+    // if cartesian is enabled
+    // Cartesian Related States
+    rt_state_publisher_ptr_->msg_.measured_cartesian_pose[0] = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_X];
+    rt_state_publisher_ptr_->msg_.measured_cartesian_pose[1] = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_Y];
+    rt_state_publisher_ptr_->msg_.measured_cartesian_pose[2] = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_Z];
+    rt_state_publisher_ptr_->msg_.measured_cartesian_pose[3] = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_QW];
+    rt_state_publisher_ptr_->msg_.measured_cartesian_pose[4] = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_QX];
+    rt_state_publisher_ptr_->msg_.measured_cartesian_pose[5] = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_QY];
+    rt_state_publisher_ptr_->msg_.measured_cartesian_pose[6] = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_QZ];
 
     rt_state_publisher_ptr_->unlockAndPublish();
   }
@@ -139,7 +181,10 @@ void LBRStateBroadcaster::init_state_msg_() {
   rt_state_publisher_ptr_->msg_.control_mode = std::numeric_limits<int8_t>::quiet_NaN();
   rt_state_publisher_ptr_->msg_.drive_state = std::numeric_limits<int8_t>::quiet_NaN();
   rt_state_publisher_ptr_->msg_.external_torque.fill(std::numeric_limits<double>::quiet_NaN());
-  rt_state_publisher_ptr_->msg_.ipo_joint_position.fill(std::numeric_limits<double>::quiet_NaN());
+  // TODO: switch overlays
+  // rt_state_publisher_ptr_->msg_.ipo_joint_position.fill(std::numeric_limits<double>::quiet_NaN());
+  rt_state_publisher_ptr_->msg_.ipo_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
+  rt_state_publisher_ptr_->msg_.measured_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
   rt_state_publisher_ptr_->msg_.measured_joint_position.fill(
       std::numeric_limits<double>::quiet_NaN());
   rt_state_publisher_ptr_->msg_.measured_torque.fill(std::numeric_limits<double>::quiet_NaN());
@@ -150,6 +195,7 @@ void LBRStateBroadcaster::init_state_msg_() {
   rt_state_publisher_ptr_->msg_.time_stamp_nano_sec = std::numeric_limits<uint32_t>::quiet_NaN();
   rt_state_publisher_ptr_->msg_.time_stamp_sec = std::numeric_limits<uint32_t>::quiet_NaN();
   rt_state_publisher_ptr_->msg_.tracking_performance = std::numeric_limits<double>::quiet_NaN();
+  rt_state_publisher_ptr_->msg_.redundancy_strategy = std::numeric_limits<int8_t>::quiet_NaN();
 }
 
 void LBRStateBroadcaster::configure_joint_names_() {

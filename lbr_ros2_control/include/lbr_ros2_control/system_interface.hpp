@@ -39,9 +39,11 @@ struct SystemInterfaceParameters {
 #if FRI_CLIENT_VERSION_MAJOR >= 2
   KUKA::FRI::EClientCommandMode client_command_mode{KUKA::FRI::EClientCommandMode::JOINT_POSITION};
 #endif
+  bool joint_overlay{true}; // false for cartesian overlay
   int32_t port_id{30200};
   const char *remote_host{nullptr};
   int32_t rt_prio{80};
+  bool use_cartesian_matrix{false};
   bool open_loop{true};
   double joint_position_tau{0.04};
   std::string command_guard_variant{"default"};
@@ -51,7 +53,7 @@ struct SystemInterfaceParameters {
 
 struct EstimatedFTSensorParameters {
   bool enabled{true};
-  std::uint16_t update_rate{100};
+  std::uint16_t update_rate{100}; // up to FRI speed
   int32_t rt_prio{30};
   std::string chain_root{"lbr_link_0"};
   std::string chain_tip{"lbr_link_ee"};
@@ -64,6 +66,18 @@ struct EstimatedFTSensorParameters {
   double torque_z_th{0.5};
 };
 
+struct EstimatedCartesianParameters // as a sensor
+{
+  bool enabled{true};
+
+  std::uint16_t update_rate{100}; // up to FRI speed
+  int32_t rt_prio{30};
+  // TODO
+  // double pos_x_th{2.0};
+  // double pos_y_th{2.0};
+  // double pos_z_th{2.0};
+}; 
+
 class SystemInterface : public hardware_interface::SystemInterface {
 protected:
   static constexpr char LOGGER_NAME[] = "lbr_ros2_control::SystemInterface";
@@ -72,13 +86,21 @@ protected:
   static constexpr uint8_t LBR_FRI_STATE_INTERFACE_SIZE = 7;
 #endif
 #if FRI_CLIENT_VERSION_MAJOR >= 2
-  static constexpr uint8_t LBR_FRI_STATE_INTERFACE_SIZE = 6;
+  static constexpr uint8_t LBR_FRI_STATE_INTERFACE_SIZE = 5; // TODO: switch bewteen overlays
 #endif
   static constexpr uint8_t LBR_FRI_COMMAND_INTERFACE_SIZE = 2;
-  static constexpr uint8_t LBR_FRI_SENSORS = 2;
-  static constexpr uint8_t AUXILIARY_SENSOR_SIZE = 12;
+  static constexpr uint8_t LBR_FRI_SENSORS = 3; // system state auxiliary, Force-Torque, Cartesian
+  // TODO: Sensor indices
+  static constexpr uint8_t CART_SENSOR_IDX = 2;
+  static constexpr uint8_t AUXILIARY_SENSOR_SIZE = 13;
   static constexpr uint8_t ESTIMATED_FT_SENSOR_SIZE = 6;
-  static constexpr uint8_t GPIO_SIZE = 1;
+  static constexpr uint8_t CARTESIAN_SENSOR_SIZE = 7; // (7[quat]) * 2[ipo, measured] + 1+2(redundancy) TODO: support for pose as matrix
+  static constexpr uint8_t LBR_FRI_GPIOS = 2; // Wrench, Cartesian
+  // TODO: only one GPIO should be activated
+  static constexpr uint8_t WRENCH_GPIO_IDX = 1;
+  static constexpr uint8_t CART_GPIO_IDX = 1;
+  static constexpr uint8_t WRENCH_GPIO_SIZE = 1;
+  static constexpr uint8_t CARTESIAN_GPIO_SIZE = 1; 
 
 public:
   SystemInterface() = default;
@@ -114,7 +136,10 @@ protected:
   bool verify_sensors_();
   bool verify_auxiliary_sensor_();
   bool verify_estimated_ft_sensor_();
+  bool verify_cartesian_sensor_();
   bool verify_gpios_();
+  bool verify_wrench_gpio_();
+  bool verify_cartesian_gpio_();
 
   // monitor end of commanding active
   bool exit_commanding_active_(const KUKA::FRI::ESessionState &previous_session_state,
@@ -123,6 +148,7 @@ protected:
   // robot parameters
   SystemInterfaceParameters parameters_;
   EstimatedFTSensorParameters ft_parameters_;
+  EstimatedCartesianParameters cart_parameters_;
 
   // robot driver
   std::shared_ptr<lbr_fri_ros2::AsyncClient> async_client_ptr_;
@@ -144,6 +170,7 @@ protected:
   double hw_control_mode_;
   double hw_time_stamp_sec_;
   double hw_time_stamp_nano_sec_;
+  double hw_redundancy_strategy_;
 
   // additional velocity state interface
   lbr_fri_idl::msg::LBRState::_measured_joint_position_type last_hw_measured_joint_position_;

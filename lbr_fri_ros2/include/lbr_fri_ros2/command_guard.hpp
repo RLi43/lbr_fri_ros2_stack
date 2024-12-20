@@ -20,12 +20,9 @@
 #include "lbr_fri_ros2/types.hpp"
 
 namespace lbr_fri_ros2 {
-struct CommandGuardParameters {
-  jnt_name_array_t joint_names;                           /**< Joint names.*/
-  jnt_array_t min_positions{0., 0., 0., 0., 0., 0., 0.};  /**< Minimum joint positions [rad].*/
-  jnt_array_t max_positions{0., 0., 0., 0., 0., 0., 0.};  /**< Maximum joint positions [rad].*/
-  jnt_array_t max_velocities{0., 0., 0., 0., 0., 0., 0.}; /**< Maximum joint velocities [rad/s].*/
-  jnt_array_t max_torques{0., 0., 0., 0., 0., 0., 0.};    /**< Maximum joint torque [Nm].*/
+class CommandGuardParameters{
+public:
+  CommandGuardParameters(){};
 };
 
 class CommandGuard {
@@ -34,32 +31,19 @@ protected:
 
 public:
   CommandGuard() = default;
-  CommandGuard(const CommandGuardParameters &command_guard_parameters);
+  // CommandGuard(const CommandGuardParameters &command_guard_parameters);
   virtual bool is_valid_command(const_idl_command_t_ref lbr_command,
                                 const_idl_state_t_ref lbr_state);
 
-  void log_info() const;
+  virtual void log_info() const = 0;
 
 protected:
   virtual bool command_in_position_limits_(const_idl_command_t_ref lbr_command,
-                                           const_idl_state_t_ref /*lbr_state*/) const;
-  virtual bool command_in_velocity_limits_(const_idl_state_t_ref lbr_state);
-  virtual bool command_in_torque_limits_(const_idl_command_t_ref lbr_command,
-                                         const_idl_state_t_ref lbr_state) const;
+                                           const_idl_state_t_ref /*lbr_state*/) const = 0;
+  virtual bool command_in_velocity_limits_(const_idl_state_t_ref lbr_state) = 0;
+  // virtual bool command_in_torque_limits_(const_idl_command_t_ref lbr_command,
+  //                                        const_idl_state_t_ref lbr_state) const = 0;
 
-  CommandGuardParameters parameters_;
-  bool prev_measured_joint_position_init_;
-  jnt_array_t prev_measured_joint_position_;
-};
-
-class SafeStopCommandGuard : public CommandGuard {
-public:
-  SafeStopCommandGuard(const CommandGuardParameters &command_guard_parameters)
-      : CommandGuard(command_guard_parameters) {};
-
-protected:
-  virtual bool command_in_position_limits_(const_idl_command_t_ref lbr_command,
-                                           const_idl_state_t_ref lbr_state) const override;
 };
 
 std::unique_ptr<CommandGuard>

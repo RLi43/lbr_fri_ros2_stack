@@ -15,6 +15,22 @@
             lbr_fri_idl/msg/LBRJointPositionCommand.msg.</description>
     </class>
 
+    <!-- LBR forward cartesian pose command controller plugin -->
+    <class name="lbr_ros2_control/LBRCartesianPoseCommandController"
+        type="lbr_ros2_control::LBRCartesianPoseCommandController"
+        base_class_type="controller_interface::ControllerInterface">
+        <description>Forward command controller for LBRCartesianPoseCommand, see 
+            lbr_fri_idl/msg/LBRCartesianPoseCommand.msg.</description>
+    </class>
+
+    <!-- LBR forward cartesian matrix command controller plugin
+    <class name="lbr_ros2_control/LBRCartesianMatrixCommandController"
+        type="lbr_ros2_control::LBRCartesianMatrixCommandController"
+        base_class_type="controller_interface::ControllerInterface">
+        <description>Forward command controller for LBRCartesianMatrixCommand message, see
+            lbr_fri_idl/msg/LBRCartesianMatrixCommand.msg.</description>
+    </class> -->
+
     <!-- LBR state broadcaster plugin -->
     <class name="lbr_ros2_control/LBRStateBroadcaster" type="lbr_ros2_control::LBRStateBroadcaster"
         base_class_type="controller_interface::ControllerInterface">

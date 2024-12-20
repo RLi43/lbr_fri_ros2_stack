@@ -1,11 +1,11 @@
 # these parameters are read by the lbr_system_interface.xacro and configure the lbr_ros2_control::SystemInterface
 hardware:
   fri_client_sdk: # the fri_client_sdk version is used to create the correct state interfaces lbr_system_interface.xacro
-    major_version: 1
-    minor_version: 15
-  client_command_mode: position # the command mode specifies the user-sent commands. Available: [position, torque, wrench]
+    major_version: 2
+    minor_version: 5
+  client_command_mode: cartesian # the command mode specifies the user-sent commands. Available: [position, torque, wrench, cartesian] (cartesian_quat)
   port_id: 30200 # port id for the UDP communication. Useful in multi-robot setups
-  remote_host: INADDR_ANY # the expected robot IP address. INADDR_ANY will accept any incoming connection
+  remote_host: 192.170.10.2 # the expected robot IP address. INADDR_ANY will accept any incoming connection
   rt_prio: 80 # real-time priority for the control loop
   # exponential moving average time constant for joint position commands [s]:
   #   Set tau > robot sample time for more smoothing on the commands
@@ -20,7 +20,8 @@ hardware:
   #   Set tau > robot sample time for more smoothing on the raw torque measurements
   #   Set tau << robot sample time for no smoothing on the raw torque measurements
   measured_torque_tau: 0.04
-  open_loop: true # KUKA works the best in open_loop control mode
+  # cartesian_pose_tau: 0.04
+  open_loop: false # KUKA works the best in open_loop control mode
 
 estimated_ft_sensor: # estimates the external force-torque from the external joint torque values
   enabled: true # whether to enable the force-torque estimation
@@ -35,3 +36,8 @@ estimated_ft_sensor: # estimates the external force-torque from the external joi
   torque_x_th: 0.5 # x-torque threshold. Only if the torque exceeds this value, the torque will be considered
   torque_y_th: 0.5 # y-torque threshold. Only if the torque exceeds this value, the torque will be considered
   torque_z_th: 0.5 # z-torque threshold. Only if the torque exceeds this value, the torque will be considered
+
+cartesian_interface:
+  enabled: true
+  redundancy_controlled: false
+  use_matrix_for_cartesian_pose: false

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "friLBRClient.h"
 
@@ -31,6 +32,18 @@ constexpr std::uint8_t CARTESIAN_DOF = 6;
 using cart_array_t = std::array<double, CARTESIAN_DOF>;
 using cart_array_t_ref = cart_array_t &;
 using const_cart_array_t_ref = const cart_array_t &;
+
+constexpr std::uint8_t CARTESIAN_QUAT_DOF = 7;
+using cart_pose_name_array_t = std::array<std::string, CARTESIAN_QUAT_DOF>;
+// constexpr std::uint8_t CARTESIAN_MATRIX_DOF = 12;
+using cart_pose_array_t = std::array<double, CARTESIAN_QUAT_DOF>;
+
+constexpr std::uint8_t CART_POSE_TRANS_NUM = 3;
+constexpr std::uint8_t CART_POSE_QUAT_NUM = 4;
+using cart_trans_array_t = std::array<double, CART_POSE_TRANS_NUM>;
+using cart_rot_array_t = std::array<double, CART_POSE_QUAT_NUM>;
+constexpr std::array<std::string_view, CART_POSE_TRANS_NUM> CART_POSE_TRANS_NAME = {"X", "Y", "Z"};
+constexpr std::array<std::string_view, CART_POSE_QUAT_NUM> CART_POSE_QUAT_NAME = {"qw", "qx", "qy", "qz"};
 
 // FRI types
 using fri_command_t = KUKA::FRI::LBRCommand;

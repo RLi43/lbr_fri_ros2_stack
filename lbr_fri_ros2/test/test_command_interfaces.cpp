@@ -9,7 +9,7 @@
 #include "friUdpConnection.h"
 
 #include "lbr_fri_idl/msg/lbr_command.hpp"
-#include "lbr_fri_ros2/interfaces/base_command.hpp"
+// #include "lbr_fri_ros2/interfaces/base_command.hpp"
 #include "lbr_fri_ros2/interfaces/position_command.hpp"
 #include "lbr_fri_ros2/interfaces/state.hpp"
 #include "lbr_fri_ros2/interfaces/torque_command.hpp"
@@ -18,7 +18,7 @@
 class TestCommandInterfaces : public ::testing::Test {
 public:
   TestCommandInterfaces() : random_engine_(std::random_device{}()) {
-    cmd_guard_params_ = lbr_fri_ros2::CommandGuardParameters();
+    cmd_guard_params_ = lbr_fri_ros2::CommandGuardParametersJoint();
     state_interface_params_ = lbr_fri_ros2::StateInterfaceParameters();
 
     state_interface_ = std::make_shared<lbr_fri_ros2::StateInterface>(state_interface_params_);
@@ -129,7 +129,7 @@ protected:
   std::uniform_real_distribution<double> uniform_real_dist_{-1.0, 1.0};
 
   double joint_position_tau_{0.04};
-  lbr_fri_ros2::CommandGuardParameters cmd_guard_params_;
+  lbr_fri_ros2::CommandGuardParametersJoint cmd_guard_params_;
   lbr_fri_ros2::StateInterfaceParameters state_interface_params_;
 
   std::shared_ptr<lbr_fri_ros2::StateInterface> state_interface_;

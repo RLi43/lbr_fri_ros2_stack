@@ -19,6 +19,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
+            "cartesian_sine_overlay = lbr_demos_py.cartesian_sine_overlay:main",
             "joint_sine_overlay = lbr_demos_py.joint_sine_overlay:main",
             "joint_trajectory_client = lbr_demos_py.joint_trajectory_client:main",
             "torque_sine_overlay = lbr_demos_py.torque_sine_overlay:main",

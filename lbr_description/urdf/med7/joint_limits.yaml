@@ -1,35 +1,58 @@
-A1:
-    lower: -170
-    upper: 170
-    velocity: 98
-    effort: 200
-A2:
-    lower: -120
-    upper: 120
-    velocity: 98
-    effort: 200
-A3:
-    lower: -170
-    upper: 170
-    velocity: 100
-    effort: 200
-A4:
-    lower: -120
-    upper: 120
-    velocity: 130
-    effort: 200
-A5:
-    lower: -170
-    upper: 170
-    velocity: 140
-    effort: 200
-A6:
-    lower: -120
-    upper: 120
-    velocity: 180
-    effort: 200
-A7:
-    lower: -175
-    upper: 175
-    velocity: 180
-    effort: 200
+Joint:
+    A1:
+        lower: -170
+        upper: 170
+        velocity: 98
+        effort: 176
+    A2:
+        lower: -120
+        upper: 120
+        velocity: 98
+        effort: 176
+    A3:
+        lower: -170
+        upper: 170
+        velocity: 100
+        effort: 110
+    A4:
+        lower: -120
+        upper: 120
+        velocity: 130
+        effort: 110
+    A5:
+        lower: -170
+        upper: 170
+        velocity: 140
+        effort: 110
+    A6:
+        lower: -120
+        upper: 120
+        velocity: 180
+        effort: 40
+    A7:
+        lower: -175
+        upper: 175
+        velocity: 180
+        effort: 40
+
+Cartesian:
+    #
+    X:
+        lower: -400.0
+        upper: 400.0
+    Y:
+        lower: 300.0
+        upper: 800.0
+    Z:
+        lower: 200.0
+        upper: 700.0
+
+    translational:
+        velocity: 3000.0
+        acceleration: 10000.0
+        jerk: 500000.0
+
+    rotational:
+        velocity: 400.0
+        acceleration: 1000.0
+        jerk: 50000.0

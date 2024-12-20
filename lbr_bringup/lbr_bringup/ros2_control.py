@@ -36,6 +36,8 @@ class LBRROS2ControlMixin:
                 "lbr_joint_position_command_controller",
                 "lbr_torque_command_controller",
                 "lbr_wrench_command_controller",
+                "lbr_cartesian_pose_command_controller",
+                # "lbr_cartesian_matrix_command_controller",
                 "twist_controller",
             ],
         )
@@ -137,6 +139,8 @@ class LBRROS2ControlMixin:
         ),
         **kwargs,
     ) -> Node:
+        # An easier way to load the robot model is to use the urdf_launch package to automatically load the xacro/urdf.
+        # https://docs.ros.org/en/humble/Tutorials/Intermediate/URDF/Using-Xacro-to-Clean-Up-a-URDF-File.html
         return Node(
             package="robot_state_publisher",
             executable="robot_state_publisher",

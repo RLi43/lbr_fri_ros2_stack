@@ -2,7 +2,7 @@
 # managers regardless of their namespace. Usefull in multi-robot setups.
 /**/controller_manager:
   ros__parameters:
-    update_rate: 100
+    update_rate: 200
 
     # ROS 2 control broadcasters
     joint_state_broadcaster:
@@ -25,6 +25,9 @@
     # LBR ROS 2 control controllers
     admittance_controller:
       type: lbr_ros2_control/AdmittanceController
+
+    lbr_cartesian_pose_command_controller:
+      type: lbr_ros2_control/LBRCartesianPoseCommandController
 
     lbr_joint_position_command_controller:
       type: lbr_ros2_control/LBRJointPositionCommandController
@@ -92,6 +95,14 @@
 /**/lbr_wrench_command_controller:
   ros__parameters:
     robot_name: lbr
+
+/**/lbr_cartesian_pose_command_controller:
+  ros__parameters:
+    robot_name: lbr
+  
+# /**/lbr_cartesian_matrix_command_controller:
+#   ros__parameters:
+#     robot_name: lbr
 
 /**/admittance_controller:
   ros__parameters:

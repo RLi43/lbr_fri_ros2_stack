@@ -25,14 +25,19 @@ find_package(urdf REQUIRED)
 # lbr_fri_ros2
 add_library(lbr_fri_ros2
   SHARED
-    src/interfaces/base_command.cpp
+    src/interfaces/base_joint_command.cpp
     src/interfaces/position_command.cpp
     src/interfaces/state.cpp
     src/interfaces/torque_command.cpp
     src/interfaces/wrench_command.cpp
+    src/interfaces/base_cartesian_command.cpp
+    # src/interfaces/cartesian_matrix_command.cpp
+    src/interfaces/cartesian_pose_command.cpp
     src/app.cpp
     src/async_client.cpp
     src/command_guard.cpp
+    src/command_guard_joint.cpp
+    src/command_guard_cartesian.cpp
     src/control.cpp
     src/filters.cpp
     src/ft_estimator.cpp
@@ -91,6 +96,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_command_interfaces lbr_fri_ros2)
 
   # # some examples of how to use the interfaces
+  add_executable(test_cartesian_command test/test_cartesian_pose_command.cpp)
+  target_link_libraries(test_cartesian_command lbr_fri_ros2)
+
+  # add_executable(test_cartesian_matrix_command test/test_cartesian_matrix_command.cpp)
+  # target_link_libraries(test_cartesian_matrix_command lbr_fri_ros2)
+
   # add_executable(test_position_command test/test_position_command.cpp)
   # target_link_libraries(test_position_command lbr_fri_ros2)
 

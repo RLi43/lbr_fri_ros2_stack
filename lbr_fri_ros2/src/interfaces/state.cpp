@@ -1,11 +1,14 @@
 #include "lbr_fri_ros2/interfaces/state.hpp"
 
 namespace lbr_fri_ros2 {
-StateInterface::StateInterface(const StateInterfaceParameters &state_interface_parameters)
-    : state_initialized_(false), parameters_(state_interface_parameters) {}
+StateInterface::StateInterface(
+  const StateInterfaceParameters &state_interface_parameters,
+  const bool use_joint_overlay)
+    : state_initialized_(false), 
+    parameters_(state_interface_parameters), 
+    joint_overlay(use_joint_overlay) {}
 
 void StateInterface::set_state(const_fri_state_t_ref state) {
-  state_.client_command_mode = state.getClientCommandMode();
 #if FRI_CLIENT_VERSION_MAJOR == 1
   std::memcpy(state_.commanded_joint_position.data(), state.getCommandedJointPosition(),
               sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
@@ -13,15 +16,37 @@ void StateInterface::set_state(const_fri_state_t_ref state) {
   std::memcpy(state_.commanded_torque.data(), state.getCommandedTorque(),
               sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
   state_.connection_quality = state.getConnectionQuality();
+  
+  // Careful!
+  // not until COMMANDING_WAIT lbr.move(...overlay) it updates the modes
+  state_.client_command_mode = state.getClientCommandMode();
   state_.control_mode = state.getControlMode();
+
   state_.drive_state = state.getDriveState();
+  // double mat[3][4];
   if (state.getSessionState() == KUKA::FRI::ESessionState::COMMANDING_WAIT ||
-      state.getSessionState() == KUKA::FRI::ESessionState::COMMANDING_ACTIVE) {
-    std::memcpy(state_.ipo_joint_position.data(), state.getIpoJointPosition(),
-                sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
+      state.getSessionState() == KUKA::FRI::ESessionState::COMMANDING_ACTIVE) {      
+
+    // state_.ipo_redundancy_value = state.getIpoRedundancyValue();
+    // TODO: switch between joint overlay and cartesian overlay
+    std::memcpy(state_.ipo_cartesian_pose.data(), state.getIpoCartesianPose(),
+                sizeof(double) * CARTESIAN_QUAT_DOF);
+    // std::memcpy(state_.ipo_joint_position.data(), state.getIpoJointPosition(),
+    //             sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
   }
   std::memcpy(state_.measured_joint_position.data(), state.getMeasuredJointPosition(),
               sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
+  std::memcpy(state_.measured_cartesian_pose.data(), state.getMeasuredCartesianPose(),
+              sizeof(double) * CARTESIAN_QUAT_DOF);
+  // state.getMeasuredCartesianPoseAsMatrix(mat);
+  //   for(int i = 0; i < 3; ++i){
+  //     for(int j = 0; j < 4; ++j){
+  //       state_.measured_cartesian_matrix[i*4 + j] = mat[i][j];
+  //     }
+  //   }
+  // state_.measured_redundancy_value = state.getMeasuredRedundancyValue();
+  // state_.redundancy_strategy = state.getRedundancyStrategy();
+  
   state_.operation_mode = state.getOperationMode();
   state_.overlay_type = state.getOverlayType();
   state_.safety_state = state.getSafetyState();
@@ -30,6 +55,7 @@ void StateInterface::set_state(const_fri_state_t_ref state) {
   state_.time_stamp_nano_sec = state.getTimestampNanoSec();
   state_.time_stamp_sec = state.getTimestampSec();
   state_.tracking_performance = state.getTrackingPerformance();
+  state_.redundancy_strategy = state.getRedundancyStrategy();
 
   if (!external_torque_filter_.is_initialized() || !measured_torque_filter_.is_initialized()) {
     // initialize state_.sample_time is available
@@ -39,12 +65,16 @@ void StateInterface::set_state(const_fri_state_t_ref state) {
   // only compute after state_.sample_time is available
   external_torque_filter_.compute(state.getExternalTorque(), state_.external_torque);
   measured_torque_filter_.compute(state.getMeasuredTorque(), state_.measured_torque);
+  // external_force_filter_.compute(state.getExternalForce(), state_.external_force);
 
   state_initialized_ = true;
 };
 
+// TODO: update this function for cartesian control
+// in open loop mode, the measured joint position is refered as the commanded joint position
 void StateInterface::set_state_open_loop(const_fri_state_t_ref state,
-                                         const_jnt_array_t_ref joint_position) {
+                                         const_idl_command_t_ref command,
+                                         bool joint_overlay) {
   state_.client_command_mode = state.getClientCommandMode();
 #if FRI_CLIENT_VERSION_MAJOR == 1
   std::memcpy(state_.commanded_joint_position.data(), state.getCommandedJointPosition(),
@@ -57,11 +87,22 @@ void StateInterface::set_state_open_loop(const_fri_state_t_ref state,
   state_.drive_state = state.getDriveState();
   if (state.getSessionState() == KUKA::FRI::ESessionState::COMMANDING_WAIT ||
       state.getSessionState() == KUKA::FRI::ESessionState::COMMANDING_ACTIVE) {
-    std::memcpy(state_.ipo_joint_position.data(), state.getIpoJointPosition(),
-                sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
+    // TODO: switch by compile parameters
+    if(joint_overlay){
+      std::memcpy(state_.ipo_joint_position.data(), state.getIpoJointPosition(),
+                  sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
+    }else{
+      std::memcpy(state_.ipo_cartesian_pose.data(), state.getIpoCartesianPose(),
+                  sizeof(double) * CARTESIAN_QUAT_DOF);
+    }
   }
-  std::memcpy(state_.measured_joint_position.data(), joint_position.data(),
-              sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
+  if(joint_overlay){
+    std::memcpy(state_.measured_joint_position.data(), command.joint_position.data(),
+                sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
+  }else{
+    std::memcpy(state_.measured_cartesian_pose.data(), command.cartesian_pose.data(),
+                sizeof(double) * CARTESIAN_QUAT_DOF);
+  }
   state_.operation_mode = state.getOperationMode();
   state_.overlay_type = state.getOverlayType();
   state_.safety_state = state.getSafetyState();
@@ -70,6 +111,7 @@ void StateInterface::set_state_open_loop(const_fri_state_t_ref state,
   state_.time_stamp_nano_sec = state.getTimestampNanoSec();
   state_.time_stamp_sec = state.getTimestampSec();
   state_.tracking_performance = state.getTrackingPerformance();
+  state_.redundancy_strategy = state.getRedundancyStrategy();
 
   if (!external_torque_filter_.is_initialized() || !measured_torque_filter_.is_initialized()) {
     // initialize state_.sample_time is available

@@ -9,6 +9,7 @@
 #include "rclcpp/logging.hpp"
 
 #include "friClientVersion.h"
+#include "friLBRState.h"
 
 #include "lbr_fri_idl/msg/lbr_state.hpp"
 #include "lbr_fri_ros2/filters.hpp"
@@ -26,12 +27,13 @@ protected:
 
 public:
   StateInterface() = delete;
-  StateInterface(const StateInterfaceParameters &state_interface_parameters = {0.04, 0.04});
+  StateInterface(const StateInterfaceParameters &state_interface_parameters = {0.04, 0.04},
+                 const bool use_joing_overlay = true);
 
   inline const_idl_state_t_ref get_state() const { return state_; };
 
   void set_state(const_fri_state_t_ref state);
-  void set_state_open_loop(const_fri_state_t_ref state, const_jnt_array_t_ref joint_position);
+  void set_state_open_loop(const_fri_state_t_ref state, const_idl_command_t_ref command, bool joint_overlay = true);
 
   inline void uninitialize() { state_initialized_ = false; }
   inline bool is_initialized() const { return state_initialized_; };
@@ -44,6 +46,7 @@ protected:
   std::atomic_bool state_initialized_;
   idl_state_t state_;
   StateInterfaceParameters parameters_;
+  const bool joint_overlay;
   JointExponentialFilterArray external_torque_filter_, measured_torque_filter_;
 };
 } // namespace lbr_fri_ros2
