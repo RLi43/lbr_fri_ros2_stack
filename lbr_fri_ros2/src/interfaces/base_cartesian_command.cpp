@@ -3,9 +3,9 @@
 namespace lbr_fri_ros2 {
 
 BaseCartesianCommandInterface::BaseCartesianCommandInterface(
-                      //  const double &cart_pose_tau,
+                       const double &cart_pose_tau,
                        const CommandGuardParametersCartesian &command_guard_parameters,
-                       const std::string &command_guard_variant)
+                       const std::string &command_guard_variant): cartesian_pose_filter_(cart_pose_tau)
                        {
   command_guard_ = command_guard_factory(command_guard_parameters, command_guard_variant);
  };

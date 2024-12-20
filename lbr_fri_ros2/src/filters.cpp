@@ -61,4 +61,35 @@ void JointExponentialFilterArray::log_info() const {
   RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME), "*** Parameters:");
   RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME), "*   tau: %.5f s", exponential_filter_.get_tau());
 }
+
+
+CartesianExponentialFilterArray::CartesianExponentialFilterArray(const double &tau)
+    : exponential_filter_(tau) {}
+
+void CartesianExponentialFilterArray::compute(const double *const current, cart_pose_array_t_ref previous) {
+  // Only apply to translational pose
+  std::for_each(current, current + CART_POSE_TRANS_NUM, [&, i = 0](const auto &current_i) mutable {
+    previous[i] = exponential_filter_.compute(current_i, previous[i]);
+    ++i;
+  });
+}
+
+void CartesianExponentialFilterArray::compute(const_cart_pose_array_t_ref current, cart_pose_array_t_ref previous) {
+  compute(current.data(), previous);
+}
+
+void CartesianExponentialFilterArray::initialize(const double &sample_time) {
+  exponential_filter_.initialize(sample_time);
+  initialized_ = true;
+}
+
+void CartesianExponentialFilterArray::initialize(const double &tau, const double &sample_time) {
+  exponential_filter_.initialize(tau, sample_time);
+  initialized_ = true;
+}
+
+void CartesianExponentialFilterArray::log_info() const {
+  RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME), "*** Parameters:");
+  RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME), "*   tau: %.5f s", exponential_filter_.get_tau());
+}
 } // namespace lbr_fri_ros2

@@ -45,7 +45,7 @@ struct SystemInterfaceParameters {
   int32_t rt_prio{80};
   bool use_cartesian_matrix{false};
   bool open_loop{true};
-  double joint_position_tau{0.04};
+  double command_filter_tau{0.04};
   std::string command_guard_variant{"default"};
   double external_torque_tau{0.04};
   double measured_torque_tau{0.04};

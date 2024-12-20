@@ -118,5 +118,28 @@ protected:
   bool initialized_{false};              /**< True if initialized.*/
   ExponentialFilter exponential_filter_; /**< Exponential filter applied to all joints.*/
 };
+
+class CartesianExponentialFilterArray{
+protected:
+  static constexpr char LOGGER_NAME[] = "lbr_fri_ros2::CartesianExponentialFilterArray";
+
+public:
+  CartesianExponentialFilterArray() = default;
+  // TODO: different filter for orientation
+  CartesianExponentialFilterArray(const double &tau);
+
+  void compute(const double *const current, cart_pose_array_t_ref previous);
+  void compute(const_cart_pose_array_t_ref current, cart_pose_array_t_ref previous);
+  void initialize(const double &sample_time);
+  void initialize(const double &tau, const double &sample_time);
+  inline const bool &is_initialized() const { return initialized_; };
+
+  void log_info() const;
+
+protected:
+  bool initialized_{false};              /**< True if initialized.*/
+  ExponentialFilter exponential_filter_; /**< Exponential filter applied to all joints.*/
+};
+
 } // namespace lbr_fri_ros2
 #endif // LBR_FRI_ROS2__FILTERS_HPP_

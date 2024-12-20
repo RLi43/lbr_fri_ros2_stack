@@ -37,7 +37,7 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
             std::stod(system_info.joints[idx].parameters.at("max_torque"));
       }
       async_client_ptr_ = std::make_shared<lbr_fri_ros2::AsyncClient>(
-          parameters_.client_command_mode, parameters_.joint_position_tau, 
+          parameters_.client_command_mode, parameters_.command_filter_tau, 
           cgpj,
           parameters_.command_guard_variant, 
           state_interface_parameters, parameters_.open_loop);
@@ -56,6 +56,7 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
       cgpc.max_rot_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_acc").substr(1));
 
       async_client_ptr_ = std::make_shared<lbr_fri_ros2::AsyncClient>(
+          parameters_.command_filter_tau,
           cgpc,
           parameters_.command_guard_variant, 
           parameters_.use_cartesian_matrix, 
@@ -495,7 +496,7 @@ bool SystemInterface::parse_parameters_(const hardware_interface::HardwareInfo &
                    info_.hardware_parameters["pid_antiwindup"].end(),
                    info_.hardware_parameters["pid_antiwindup"].begin(),
                    ::tolower); // convert to lower case
-    parameters_.joint_position_tau = std::stod(info_.hardware_parameters["joint_position_tau"]);
+    parameters_.command_filter_tau = std::stod(info_.hardware_parameters["joint_position_tau"]);
     parameters_.command_guard_variant = system_info.hardware_parameters.at("command_guard_variant");
     parameters_.external_torque_tau = std::stod(info_.hardware_parameters["external_torque_tau"]);
     parameters_.measured_torque_tau = std::stod(info_.hardware_parameters["measured_torque_tau"]);

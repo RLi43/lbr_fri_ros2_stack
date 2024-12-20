@@ -14,7 +14,7 @@ protected:
 public:
   BaseCartesianCommandInterface() = delete;
   BaseCartesianCommandInterface(
-                      //  const double &cart_pose_tau, // TODO
+                       const double &cart_pose_tau,
                        const CommandGuardParametersCartesian &command_guard_parameters,
                        const std::string &command_guard_variant = "default");
 
@@ -23,7 +23,7 @@ public:
   void log_info() const override;
   // virtual void init_command(const_idl_state_t_ref state) = 0;
   // TODO: deal with the redundancy value
-  // CartesianExponentialFilterArray cartesian_pose_filter_;
+  CartesianExponentialFilterArray cartesian_pose_filter_;
   std::unique_ptr<CommandGuardCartesian> command_guard_;
 };
 } // namespace lbr_fri_ros2

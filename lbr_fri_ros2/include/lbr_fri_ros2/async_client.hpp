@@ -29,7 +29,7 @@ public:
   AsyncClient() = delete;
   // Joint Overlay
   AsyncClient(const KUKA::FRI::EClientCommandMode &client_command_mode,
-              const double &joint_position_tau, 
+              const double &command_filter_tau, 
               const CommandGuardParametersJoint &command_guard_parameters,
               const std::string &command_guard_variant,
               const StateInterfaceParameters &state_interface_parameters = {0.04, 0.04},
@@ -38,12 +38,13 @@ public:
 
   // Cartesian Overlay
   AsyncClient(
-              // TODO: also apply for postion filtering
+              // TODO: maybe different tau for orientation
+              const double &command_filter_tau,
               const CommandGuardParametersCartesian &command_guard_parameters,
               const std::string &command_guard_variant,
               const bool use_matrix_for_cartesian_pose = false,
               const StateInterfaceParameters &state_interface_parameters = {0.04, 0.04},
-              const bool &open_loop = false  // TODO: remove this `open_loop` or add support to cartesian commands 
+              const bool &open_loop = false
               );
 
   inline std::shared_ptr<BaseCommandInterface> get_command_interface() {

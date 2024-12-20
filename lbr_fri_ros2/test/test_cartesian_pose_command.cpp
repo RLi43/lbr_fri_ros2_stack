@@ -12,7 +12,7 @@
 int main() {
   rclcpp::init(0, nullptr);
 
-  // double joint_position_tau = 0.04;
+  double cart_position_tau = 0.04;
   lbr_fri_ros2::CommandGuardParametersCartesian cmd_guard_params;
   lbr_fri_ros2::StateInterfaceParameters state_interface_params;
 
@@ -29,6 +29,7 @@ int main() {
   cmd_guard_params.max_rot_acc = 1000.0 * M_PI / 180.;
 
   auto client = std::make_shared<lbr_fri_ros2::AsyncClient>(
+      cart_position_tau,
       cmd_guard_params, "default", 
       false,
       state_interface_params, true);

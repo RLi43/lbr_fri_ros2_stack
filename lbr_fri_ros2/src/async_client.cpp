@@ -59,6 +59,7 @@ AsyncClient::AsyncClient(const KUKA::FRI::EClientCommandMode &client_command_mod
 
 
 AsyncClient::AsyncClient(
+                         const double &command_filter_tau,
                          const CommandGuardParametersCartesian &command_guard_parameters,
                          const std::string &command_guard_variant,
                          const bool use_matrix_for_cartesian_pose,
@@ -82,7 +83,7 @@ AsyncClient::AsyncClient(
   // }
   // else{
     command_interface_ptr_ = std::make_shared<CartesianPoseCommandInterface>(
-        command_guard_parameters, command_guard_variant);
+        command_filter_tau, command_guard_parameters, command_guard_variant);
   // }
     
   command_interface_ptr_->log_info();
