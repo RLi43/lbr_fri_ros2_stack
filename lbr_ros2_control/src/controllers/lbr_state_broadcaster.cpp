@@ -17,10 +17,10 @@ controller_interface::CallbackReturn LBRStateBroadcaster::on_init() {
   try {
     state_publisher_ptr_ =
         this->get_node()->create_publisher<lbr_fri_idl::msg::LBRState>("state", 1);
-
-    rt_state_publisher_ptr_ =
-        std::make_shared<realtime_tools::RealtimePublisher<lbr_fri_idl::msg::LBRState>>(
-            state_publisher_ptr_);
+    
+        rt_state_publisher_ptr_ =
+            std::make_shared<realtime_tools::RealtimePublisher<lbr_fri_idl::msg::LBRState>>(
+                state_publisher_ptr_);
     if (!this->get_node()->has_parameter("robot_name")) {
       this->get_node()->declare_parameter("robot_name", "lbr");
     }
@@ -45,6 +45,7 @@ controller_interface::return_type LBRStateBroadcaster::update(const rclcpp::Time
     return controller_interface::return_type::OK;
   }
   if (rt_state_publisher_ptr_->trylock()) {
+    // TODO: update it when it's changed (possiblely changed after state change)
     // FRI related states
     rt_state_publisher_ptr_->msg_.client_command_mode = static_cast<int8_t>(
         state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_CLIENT_COMMAND_MODE]);
@@ -70,8 +71,8 @@ controller_interface::return_type LBRStateBroadcaster::update(const rclcpp::Time
         static_cast<uint32_t>(state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_TIME_STAMP_SEC]);
     rt_state_publisher_ptr_->msg_.tracking_performance =
         state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_TRACKING_PERFORMANCE];
-    rt_state_publisher_ptr_->msg_.redundancy_strategy =
-        static_cast<int8_t>(state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_REDUNDANCY_STRATEGY]);
+    rt_state_publisher_ptr_->msg_.redundancy_strategy = static_cast<int8_t>(
+        state_interface_map_[HW_IF_AUXILIARY_PREFIX][HW_IF_REDUNDANCY_STRATEGY]);
 
     // joint related states
     std::for_each(joint_names_.begin(), joint_names_.end(),
@@ -104,20 +105,20 @@ controller_interface::return_type LBRStateBroadcaster::update(const rclcpp::Time
     if (rt_state_publisher_ptr_->msg_.session_state == KUKA::FRI::COMMANDING_WAIT ||
                         rt_state_publisher_ptr_->msg_.session_state ==
                             KUKA::FRI::COMMANDING_ACTIVE) {
-    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[0] = 
-            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QX];
-    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[1] = 
-            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_Y];
-    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[2] = 
-            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_Z];
-    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[3] = 
-            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QW];
-    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[4] = 
-            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QX];
-    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[5] = 
-            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QY];
-    rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[6] = 
-            state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QZ];
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[0] = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_X];
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[1] = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_Y];
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[2] = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_Z];
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[3] = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QW];
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[4] = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QX];
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[5] = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QY];
+      rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[6] = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QZ];
     }else{
       rt_state_publisher_ptr_->msg_.ipo_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
     }

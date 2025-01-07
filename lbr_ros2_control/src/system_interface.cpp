@@ -755,7 +755,7 @@ bool SystemInterface::verify_cartesian_sensor_(){
   const auto& cart_sensor = info_.sensors[CART_SENSOR_IDX];
   if (cart_sensor.name != HW_IF_CARTESIAN_SENSOR_PREFIX) {
     RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
-                        lbr_fri_ros2::ColorScheme::ERROR << "GPIO '" << cart_sensor.name.c_str()
+                        lbr_fri_ros2::ColorScheme::ERROR << "Sensor '" << cart_sensor.name.c_str()
                                                          << "' received invalid name. Expected '"
                                                          << HW_IF_CARTESIAN_SENSOR_PREFIX << "'"
                                                          << lbr_fri_ros2::ColorScheme::ENDC);

@@ -23,7 +23,6 @@ LBRCartesianPoseCommandController::command_interface_configuration() const {
 
 controller_interface::InterfaceConfiguration
 LBRCartesianPoseCommandController::state_interface_configuration() const {
-  // TODO: should we add measured values?
   return controller_interface::InterfaceConfiguration{
       controller_interface::interface_configuration_type::NONE};
 }
@@ -36,6 +35,7 @@ controller_interface::CallbackReturn LBRCartesianPoseCommandController::on_init(
             [this](const lbr_fri_idl::msg::LBRCartesianPoseCommand::SharedPtr msg) {
               rt_lbr_cartesian_pose_command_ptr_.writeFromNonRT(msg);
             });
+
     if (!this->get_node()->has_parameter("robot_name")) {
       this->get_node()->declare_parameter("robot_name", "lbr");
     }
@@ -56,17 +56,6 @@ LBRCartesianPoseCommandController::update(const rclcpp::Time & /*time*/,
   if (!lbr_cartesian_pose_command || !(*lbr_cartesian_pose_command)) {
     return controller_interface::return_type::OK;
   }
-  // RCLCPP_INFO_STREAM(
-  //       this->get_node()->get_logger(),
-  //       "Giving Command: "
-  //       << (*lbr_cartesian_pose_command)->cartesian_pose_quaternion[0]
-  //       << ", " << (*lbr_cartesian_pose_command)->cartesian_pose_quaternion[1]
-  //       << ", " << (*lbr_cartesian_pose_command)->cartesian_pose_quaternion[2]
-  //       << ", " << (*lbr_cartesian_pose_command)->cartesian_pose_quaternion[3]
-  //       << ", " << (*lbr_cartesian_pose_command)->cartesian_pose_quaternion[4]
-  //       << ", " << (*lbr_cartesian_pose_command)->cartesian_pose_quaternion[5]
-  //       << ", " << (*lbr_cartesian_pose_command)->cartesian_pose_quaternion[6]
-  //       );
   for(std::size_t idx = 0; idx < lbr_fri_ros2::CARTESIAN_QUAT_DOF; ++idx){
     command_interfaces_[idx].set_value((*lbr_cartesian_pose_command)->cartesian_pose_quaternion[idx]);
   }
@@ -85,8 +74,8 @@ controller_interface::CallbackReturn LBRCartesianPoseCommandController::on_confi
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::CallbackReturn
-LBRCartesianPoseCommandController::on_activate(const rclcpp_lifecycle::State & /*previous_state*/) {
+controller_interface::CallbackReturn LBRCartesianPoseCommandController::on_activate(
+  const rclcpp_lifecycle::State & /*previous_state*/) {
   return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -109,9 +98,9 @@ void LBRCartesianPoseCommandController::configure_cartesian_names_() {
   cart_names_[1] = robot_name + "_C.Y";
   cart_names_[2] = robot_name + "_C.Z";
   cart_names_[3] = robot_name + "_C.QW";
-  cart_names_[0] = robot_name + "_C.QX";
-  cart_names_[1] = robot_name + "_C.QY";
-  cart_names_[2] = robot_name + "_C.QZ";
+  cart_names_[4] = robot_name + "_C.QX";
+  cart_names_[5] = robot_name + "_C.QY";
+  cart_names_[6] = robot_name + "_C.QZ";
 }
 } // namespace lbr_ros2_control
 

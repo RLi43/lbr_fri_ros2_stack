@@ -13,7 +13,7 @@ protected:
 public:
   CartesianPoseCommandInterface() = delete;
   CartesianPoseCommandInterface(
-    const double &cart_pose_tau,
+    const double cart_pose_tau,
     const CommandGuardParametersCartesian &command_guard_parameters,
     const std::string &command_guard_variant = "default");
 

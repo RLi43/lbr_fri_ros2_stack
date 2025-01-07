@@ -13,7 +13,7 @@ int main() {
   rclcpp::init(0, nullptr);
 
   double joint_position_tau = 0.04;
-  lbr_fri_ros2::CommandGuardParameters cmd_guard_params;
+  lbr_fri_ros2::CommandGuardParametersJoint cmd_guard_params;
   lbr_fri_ros2::StateInterfaceParameters state_interface_params;
 
   // #include "hardware_interface/hardware_info.hpp"
@@ -37,7 +37,7 @@ int main() {
   };
 
   auto client = std::make_shared<lbr_fri_ros2::AsyncClient>(
-      KUKA::FRI::EClientCommandMode::POSITION, joint_position_tau, cmd_guard_params, "default",
+      KUKA::FRI::EClientCommandMode::JOINT_POSITION, joint_position_tau, cmd_guard_params, "default",
       state_interface_params, true);
   lbr_fri_ros2::App app(client);
 
