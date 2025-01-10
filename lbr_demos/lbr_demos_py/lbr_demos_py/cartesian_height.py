@@ -11,10 +11,37 @@ import std_msgs.msg as rosmsg_std
 # import lbr_fri_idl
 from lbr_fri_idl.msg import LBRCartesianPoseCommand, LBRState
 
+class Quat:
+    def __init__(self, w=1.0, x=0.0, y=0.0, z=0.0, data=None):
+        if data is None:
+            self.w = w
+            self.x = x
+            self.y = y
+            self.z = z
+        elif len(data) == 4:
+            self.w, self.x, self.y, self.z = data
+        else:
+            raise RuntimeError(f"Can not initialize Quat with data {data}")
+    
+    def flatten(self):
+        return [self.w, self.x, self.y, self.z]
+    
+    def inverse(self):
+        return Quat(self.w, -self.x, -self.y, -self.z)
+    
+    def multiply(self, b):
+        return Quat(
+            self.w*b.w - self.x*b.x - self.y*b.y - self.z*b.z,
+            self.w*b.x + self.x*b.w + self.y*b.z - self.z*b.y,
+            self.w*b.y - self.x*b.z + self.y*b.w + self.z*b.x,
+            self.w*b.z + self.x*b.y - self.y*b.x + self.z*b.w)
+
+    def __str__(self):
+        return str(self.flatten())
 
 class CartesianSineOverlayNode(Node):
     def __init__(self, node_name: str, verbose = False) -> None:
-        super().__init__(node_name)
+        super().__init__(node_name, namespace='/lbr')
         self._position_deviation_eps = 0.001
         self._verbose = verbose
         self._work_space = ((-400, 400), (300, 1000), (200, 700))
@@ -43,22 +70,32 @@ class CartesianSineOverlayNode(Node):
             1
         )
         self._robot_position = None
+        self._robot_quat = None
         self._probe_position = None
+        self._probe_quat = None
         self._position_offset = None # robot = cam + offset
+        self._quat_offset = None
 
 
     def _on_receive_pose(self, msg: rosmsg_geo.PoseStamped):        
         self._probe_position = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
+        self._probe_quat = Quat(data=[msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z])
 
+        if self._robot_position is None:
+            return
         if self._position_offset is None:
             self._position_offset = self._robot_position - self._probe_position
+            self._quat_offset = self._probe_quat.inverse().multiply(self._robot_quat)
             if self._verbose:
-                print(f"Setting referencing height {self._probe_position}(Cam) = {self._robot_position}(Robot)")
+                print(f"Setting referencing position {self._probe_position}(Cam) = {self._robot_position}(Robot)")
+                print(f"Setting referencing orientation {self._probe_quat}(Cam) == {self._robot_quat}(Robot)")
                 print(f"height offset = {self._position_offset}")
+                print(f"orientation offset = {self._quat_offset}")
             # TODO: check if valid
 
     def _on_lbr_state(self, lbr_state: LBRState) -> None:
         self._robot_position = lbr_state.measured_cartesian_pose[:3]
+        self._robot_quat = Quat(data=lbr_state.measured_cartesian_pose[3:7])
 
         if self._dt is None:
             print("self._dt is not set")
@@ -72,6 +109,7 @@ class CartesianSineOverlayNode(Node):
             if self._position_offset is None or self._probe_position is None:
                 return
             target_position = self._position_offset + self._probe_position
+            target_quat = self._probe_quat.multiply(self._quat_offset)
             if np.any(np.abs(target_position - self._robot_position) > self._position_deviation_eps):
                 # TODO: Target validate
                 if all(self._work_space[i][0] < target_position[i] < self._work_space[i][1] for i in range(3)):
@@ -89,8 +127,10 @@ class CartesianSineOverlayNode(Node):
                     return
             
                 cart_pose_cmd.cartesian_pose_quaternion[:3] = target_position
+                cart_pose_cmd.cartesian_pose_quaternion[3:7] = target_quat.flatten()
                 if self._verbose:
-                    print("publishing position", cart_pose_cmd.cartesian_pose_quaternion[:3])
+                    print("publishing position " + " ".join([f"{x:.2f}" for x in cart_pose_cmd.cartesian_pose_quaternion[:3]]),
+                          "quaternion " + " ".join([f"{x:.3f}" for x in cart_pose_cmd.cartesian_pose_quaternion[3:7]]))
 
                 # sandbox
                 self._lbr_cartesian_pose_command_pub.publish(

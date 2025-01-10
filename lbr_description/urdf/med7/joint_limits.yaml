@@ -38,17 +38,18 @@ Joint:
 Cartesian:
     #
     X:
-        lower: -400.0
-        upper: 400.0
+        lower: -200.0
+        upper: 200.0
     Y:
-        lower: 300.0
-        upper: 800.0
+        lower: 500.0
+        upper: 900.0
     Z:
         lower: 200.0
-        upper: 700.0
+        upper: 600.0
 
     translational:
-        velocity: 3000.0
+        velocity: 1000.0
+        # velocity: 3000.0
         acceleration: 10000.0
         jerk: 500000.0
 
@@ -56,3 +57,6 @@ Cartesian:
         velocity: 400.0
         acceleration: 1000.0
         jerk: 50000.0
+    
+    redundancy:
+        velocity: 1.0

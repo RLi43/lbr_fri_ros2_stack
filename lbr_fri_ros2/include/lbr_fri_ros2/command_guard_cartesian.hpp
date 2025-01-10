@@ -13,6 +13,7 @@ public:
   double max_trans_acc;    /**< Maximum pose accelerations [mm/s2].*/
   double max_rot_vel; /**< Maximum pose velocities [mm/s].*/
   double max_rot_acc;    /**< Maximum pose accelerations [mm/s2].*/
+  double max_jnt_vel; /**< Maximum joint velocity [rad/s]. */
 };
 
 class CommandGuardCartesian: public CommandGuard {
@@ -20,24 +21,24 @@ protected:
   static constexpr char LOGGER_NAME[] = "lbr_fri_ros2::CommandGuard";
 
 public:
-  CommandGuardCartesian(const CommandGuardParametersCartesian &command_guard_parameters,
-                        bool as_matrix = false);
-  bool is_valid_command(const_idl_command_t_ref lbr_command,
-                                const_idl_state_t_ref lbr_state) override;
+  CommandGuardCartesian(const CommandGuardParametersCartesian &command_guard_parameters);
+  // bool is_valid_command(const_idl_command_t_ref lbr_command,
+  //                               const_idl_state_t_ref lbr_state, bool vel_check = true) override;
 
   void log_info() const;
+  inline double get_trans_vel_limit() const {return parameters_.max_trans_vel;}; // TODO: better set somewhere else
+  inline double get_joint_vel_limit() const {return parameters_.max_jnt_vel;};
 
 protected:
   bool command_in_position_limits_(const_idl_command_t_ref lbr_command,
                                            const_idl_state_t_ref /*lbr_state*/) const;
-  bool command_in_velocity_limits_(const_idl_state_t_ref lbr_state);
+  bool command_in_velocity_limits_(const_idl_command_t_ref lbr_command,
+                                         const_idl_state_t_ref lbr_state);
   // TODO
   // bool command_in_acceleration_limits_(const_idl_command_t_ref lbr_command,
   //                                        const_idl_state_t_ref lbr_state) const;
 
   CommandGuardParametersCartesian parameters_;
-  bool prev_measured_pose_position_init_;
-  const bool as_matrix; // TODO: better seperate them
   cart_pose_array_t prev_measured_pose_position_;
 };
 

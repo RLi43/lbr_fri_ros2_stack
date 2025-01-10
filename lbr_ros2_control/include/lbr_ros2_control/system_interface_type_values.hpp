@@ -41,6 +41,7 @@ constexpr char HW_IF_IPO_CARTESIAN_POSE_QW[] = "ipo_pose.qw";
 constexpr char HW_IF_IPO_CARTESIAN_POSE_QX[] = "ipo_pose.qx";
 constexpr char HW_IF_IPO_CARTESIAN_POSE_QY[] = "ipo_pose.qy";
 constexpr char HW_IF_IPO_CARTESIAN_POSE_QZ[] = "ipo_pose.qz";
+constexpr char HW_IF_IPO_REDUNDANCY_VALUE[] = "ipo_pose.redundancy_value";
 
 constexpr char HW_IF_MEASURED_CARTESIAN_POSE[] = "measured_cartesian";
 constexpr char HW_IF_MEASURED_CARTESIAN_POSE_X[] = "measured_pose.x";
@@ -50,6 +51,7 @@ constexpr char HW_IF_MEASURED_CARTESIAN_POSE_QW[] = "measured_pose.qw";
 constexpr char HW_IF_MEASURED_CARTESIAN_POSE_QX[] = "measured_pose.qx";
 constexpr char HW_IF_MEASURED_CARTESIAN_POSE_QY[] = "measured_pose.qy";
 constexpr char HW_IF_MEASURED_CARTESIAN_POSE_QZ[] = "measured_pose.qz";
+constexpr char HW_IF_MEASURED_REDUNDANCY_VALUE[] = "measured_pose.redundancy_value";
 
 constexpr char HW_IF_CARTESIAN_POSE_X[] = "pose.x";
 constexpr char HW_IF_CARTESIAN_POSE_Y[] = "pose.y";
@@ -58,6 +60,7 @@ constexpr char HW_IF_CARTESIAN_POSE_QW[] = "pose.qw";
 constexpr char HW_IF_CARTESIAN_POSE_QX[] = "pose.qx";
 constexpr char HW_IF_CARTESIAN_POSE_QY[] = "pose.qy";
 constexpr char HW_IF_CARTESIAN_POSE_QZ[] = "pose.qz";
+constexpr char HW_IF_REDUNDANCY_VALUE[] = "pose.redundancy_value";
 
 // TODO pose as matrix
 // constexpr char HW_IF_IPO_CARTESIAN_MATRIX[] = "ipo_cartesian_matrix";

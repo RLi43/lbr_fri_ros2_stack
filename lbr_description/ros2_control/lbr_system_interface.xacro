@@ -94,11 +94,6 @@
                 <!-- Cartesian Interface -->
                 <xacro:if value="${system_config['cartesian_interface']['enabled']}">
                     <sensor name="cartesian_sensor">
-                        <param name="redundancy_controlled">"${system_config['cartesian_interface']['redundancy_controlled']}"</param>
-                        <xacro:if value="${system_config['cartesian_interface']['redundancy_controlled']}">
-                            <state_interface name="measured_redundancy_value" />
-                            <state_interface name="ipo_redundancy_value" />
-                        </xacro:if>
 
                         <state_interface name="measured_pose.x" />
                         <state_interface name="measured_pose.y" />
@@ -107,6 +102,7 @@
                         <state_interface name="measured_pose.qx"/>
                         <state_interface name="measured_pose.qy"/>
                         <state_interface name="measured_pose.qz"/>
+                        <state_interface name="measured_pose.redundancy_value"/>
 
                         <!-- TODO As Matrix
                         <state_interface name="measured_pose_matrix"/>
@@ -120,6 +116,7 @@
                         <!-- <param name="max_trans_jerk">"${joint_limits['Cartesian']['translational']['jerk']}"</param> -->
                         <param name="max_rot_vel">"${joint_limits['Cartesian']['rotational']['velocity']}"</param>
                         <param name="max_rot_acc">"${joint_limits['Cartesian']['rotational']['acceleration']}"</param>
+                        <param name="max_jnt_vel">"${joint_limits['Cartesian']['redundancy']['velocity']}"</param>
                         <!-- <param name="max_trans_jerk">"${joint_limits['Cartesian']['translational']['jerk']}"</param> -->
                         <command_interface name="pose.x">
                             <!-- very simple range check -->
@@ -136,10 +133,22 @@
                             <param name="max">"${joint_limits['Cartesian']['Z']['upper']}"</param>
                         </command_interface>
                         
-                        <command_interface name="pose.qw"/>
-                        <command_interface name="pose.qx"/>
-                        <command_interface name="pose.qy"/>
-                        <command_interface name="pose.qz"/>
+                        <command_interface name="pose.qw">
+                            <param name="min">"-1"</param>
+                            <param name="max">"1"</param>
+                        </command_interface>
+                        <command_interface name="pose.qx">
+                            <param name="min">"-1"</param>
+                            <param name="max">"1"</param>
+                        </command_interface>
+                        <command_interface name="pose.qy">
+                            <param name="min">"-1"</param>
+                            <param name="max">"1"</param>
+                        </command_interface>
+                        <command_interface name="pose.qz">
+                            <param name="min">"-1"</param>
+                            <param name="max">"1"</param>
+                        </command_interface>
 
                         <state_interface name="ipo_pose.x" />
                         <state_interface name="ipo_pose.y" />
@@ -148,6 +157,7 @@
                         <state_interface name="ipo_pose.qx"/>
                         <state_interface name="ipo_pose.qy"/>
                         <state_interface name="ipo_pose.qz"/>
+                        <state_interface name="ipo_pose.redundancy_value"/>
                     </gpio>
                     </xacro:unless>
                     <xacro:if value="${system_config['cartesian_interface']['use_matrix_for_cartesian_pose']}">

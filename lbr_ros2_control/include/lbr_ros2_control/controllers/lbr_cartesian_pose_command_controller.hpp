@@ -50,7 +50,7 @@ protected:
 
   void configure_cartesian_names_();
 
-  lbr_fri_ros2::cart_pose_name_array_t cart_names_;
+  std::array<std::string, 8> cart_names_;
 
   realtime_tools::RealtimeBuffer<lbr_fri_idl::msg::LBRCartesianPoseCommand::SharedPtr>
       rt_lbr_cartesian_pose_command_ptr_;

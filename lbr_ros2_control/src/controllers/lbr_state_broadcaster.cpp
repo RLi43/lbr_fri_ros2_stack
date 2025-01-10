@@ -119,6 +119,8 @@ controller_interface::return_type LBRStateBroadcaster::update(const rclcpp::Time
               state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QY];
       rt_state_publisher_ptr_->msg_.ipo_cartesian_pose[6] = 
               state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_CARTESIAN_POSE_QZ];
+      rt_state_publisher_ptr_->msg_.ipo_redundancy_value = 
+              state_interface_map_[HW_IF_CARTESIAN_GPIO_PREFIX][HW_IF_IPO_REDUNDANCY_VALUE];
     }else{
       rt_state_publisher_ptr_->msg_.ipo_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
     }
@@ -140,6 +142,8 @@ controller_interface::return_type LBRStateBroadcaster::update(const rclcpp::Time
             state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_QY];
     rt_state_publisher_ptr_->msg_.measured_cartesian_pose[6] = 
             state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_CARTESIAN_POSE_QZ];
+    rt_state_publisher_ptr_->msg_.measured_redundancy_value = 
+            state_interface_map_[HW_IF_CARTESIAN_SENSOR_PREFIX][HW_IF_MEASURED_REDUNDANCY_VALUE];
 
     rt_state_publisher_ptr_->unlockAndPublish();
   }

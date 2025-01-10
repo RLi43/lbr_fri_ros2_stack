@@ -5,16 +5,6 @@ CommandGuardJoint::CommandGuardJoint(const CommandGuardParametersJoint &command_
     : parameters_(command_guard_parameters), 
     prev_measured_joint_position_init_(false) {};
 
-bool CommandGuardJoint::is_valid_command(const_idl_command_t_ref lbr_command,
-                                    const_idl_state_t_ref lbr_state) {
-  if (!command_in_position_limits_(lbr_command, lbr_state)) {
-    return false;
-  }
-  if (!command_in_velocity_limits_(lbr_state)) {
-    return false;
-  }
-  return true;
-}
 
 void CommandGuardJoint::log_info() const {
   RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME), "*** Parameters:");
@@ -43,7 +33,8 @@ bool CommandGuardJoint::command_in_position_limits_(const_idl_command_t_ref lbr_
   return true;
 }
 
-bool CommandGuardJoint::command_in_velocity_limits_(const_idl_state_t_ref lbr_state) {
+bool CommandGuardJoint::command_in_velocity_limits_(const_idl_command_t_ref lbr_command,
+                                               const_idl_state_t_ref lbr_state) {
   const double &dt = lbr_state.sample_time;
   if (!prev_measured_joint_position_init_) {
     prev_measured_joint_position_init_ = true;

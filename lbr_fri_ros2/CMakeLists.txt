@@ -43,6 +43,7 @@ add_library(lbr_fri_ros2
     src/ft_estimator.cpp
     src/kinematics.cpp
     src/worker.cpp
+    src/quaternion.cpp
 )
 
 target_include_directories(lbr_fri_ros2
@@ -102,8 +103,8 @@ if(BUILD_TESTING)
   # add_executable(test_cartesian_matrix_command test/test_cartesian_matrix_command.cpp)
   # target_link_libraries(test_cartesian_matrix_command lbr_fri_ros2)
 
-  # add_executable(test_position_command test/test_position_command.cpp)
-  # target_link_libraries(test_position_command lbr_fri_ros2)
+  add_executable(test_position_command test/test_position_command.cpp)
+  target_link_libraries(test_position_command lbr_fri_ros2)
 
   # add_executable(test_torque_command test/test_torque_command.cpp)
   # target_link_libraries(test_torque_command lbr_fri_ros2)

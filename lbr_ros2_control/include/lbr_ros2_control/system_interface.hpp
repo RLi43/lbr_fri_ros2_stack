@@ -66,16 +66,12 @@ struct EstimatedFTSensorParameters {
   double torque_z_th{0.5};
 };
 
-struct EstimatedCartesianParameters // as a sensor
+struct CartesianParameters // as a sensor
 {
   bool enabled{true};
 
   std::uint16_t update_rate{100}; // up to FRI speed
   int32_t rt_prio{30};
-  // TODO
-  // double pos_x_th{2.0};
-  // double pos_y_th{2.0};
-  // double pos_z_th{2.0};
 }; 
 
 class SystemInterface : public hardware_interface::SystemInterface {
@@ -148,7 +144,7 @@ protected:
   // robot parameters
   SystemInterfaceParameters parameters_;
   EstimatedFTSensorParameters ft_parameters_;
-  EstimatedCartesianParameters cart_parameters_;
+  CartesianParameters cart_parameters_;
 
   // robot driver
   std::shared_ptr<lbr_fri_ros2::AsyncClient> async_client_ptr_;
@@ -191,6 +187,8 @@ protected:
 
   // exposed command interfaces
   lbr_fri_idl::msg::LBRCommand hw_lbr_command_;
+
+  bool joint_overlay_;
 };
 } // namespace lbr_ros2_control
 #endif // LBR_ROS2_CONTROL__SYSTEM_INTERFACE_HPP_

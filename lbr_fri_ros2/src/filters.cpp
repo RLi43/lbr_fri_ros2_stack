@@ -1,4 +1,5 @@
 #include "lbr_fri_ros2/filters.hpp"
+#include "lbr_fri_ros2/quaternion.hpp"
 
 namespace lbr_fri_ros2 {
 ExponentialFilter::ExponentialFilter()
@@ -67,20 +68,33 @@ CartesianExponentialFilterArray::CartesianExponentialFilterArray(const double &t
     : exponential_filter_(tau) {}
 
 void CartesianExponentialFilterArray::compute(const double *const current, cart_pose_array_t_ref previous) {
-  // Only apply to translational pose
+  // translation
   std::for_each(current, current + CART_POSE_TRANS_NUM, [&, i = 0](const auto &current_i) mutable {
     previous[i] = exponential_filter_.compute(current_i, previous[i]);
     ++i;
   });
+  // rotation
+  Quaternion prev = Quaternion(previous[3], previous[4], previous[5], previous[6]);
+  Quaternion curr = Quaternion(current[3], current[4], current[5], current[6]);
+  Quaternion filtered = Quaternion::slerp(prev, curr, exponential_filter_.get_alpha());
+  previous[3] = filtered.get_w();
+  previous[4] = filtered.get_x();
+  previous[5] = filtered.get_y();
+  previous[6] = filtered.get_z();
 }
 
 void CartesianExponentialFilterArray::compute(const_cart_pose_array_t_ref current, cart_pose_array_t_ref previous) {
   compute(current.data(), previous);
 }
 
-void CartesianExponentialFilterArray::initialize(const double &sample_time) {
-  exponential_filter_.initialize(sample_time);
-  initialized_ = true;
+double CartesianExponentialFilterArray::compute(double current, double previous)
+{
+    return exponential_filter_.compute(current, previous);;
+}
+void CartesianExponentialFilterArray::initialize(const double &sample_time)
+{
+    exponential_filter_.initialize(sample_time);
+    initialized_ = true;
 }
 
 void CartesianExponentialFilterArray::initialize(const double &tau, const double &sample_time) {

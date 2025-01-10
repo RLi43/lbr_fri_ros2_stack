@@ -130,6 +130,7 @@ public:
 
   void compute(const double *const current, cart_pose_array_t_ref previous);
   void compute(const_cart_pose_array_t_ref current, cart_pose_array_t_ref previous);
+  double compute(double current, double previous);
   void initialize(const double &sample_time);
   void initialize(const double &tau, const double &sample_time);
   inline const bool &is_initialized() const { return initialized_; };

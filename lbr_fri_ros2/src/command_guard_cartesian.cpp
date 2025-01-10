@@ -1,24 +1,13 @@
 #include "lbr_fri_ros2/command_guard_cartesian.hpp"
+#include "lbr_fri_ros2/quaternion.hpp"
 
 namespace lbr_fri_ros2 {
 CommandGuardCartesian::CommandGuardCartesian(
-  const CommandGuardParametersCartesian &command_guard_parameters, bool as_matrix)
-    : parameters_(command_guard_parameters), 
-    prev_measured_pose_position_init_(false), 
-    as_matrix(as_matrix) {
+  const CommandGuardParametersCartesian &command_guard_parameters)
+    : parameters_(command_guard_parameters)
+    {
 
     };
-
-bool CommandGuardCartesian::is_valid_command(const_idl_command_t_ref lbr_command,
-                                    const_idl_state_t_ref lbr_state) {
-  if (!command_in_position_limits_(lbr_command, lbr_state)) {
-    return false;
-  }
-  if (!command_in_velocity_limits_(lbr_state)) {
-    return false;
-  }
-  return true;
-}
 
 void CommandGuardCartesian::log_info() const {
   RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME), "*** Parameters:");
@@ -55,22 +44,18 @@ bool CommandGuardCartesian::command_in_position_limits_(const_idl_command_t_ref 
   return true;
 }
 
-bool CommandGuardCartesian::command_in_velocity_limits_(const_idl_state_t_ref lbr_state) {
+bool CommandGuardCartesian::command_in_velocity_limits_(const_idl_command_t_ref lbr_command,
+                                                const_idl_state_t_ref lbr_state) {
   // translation
-  if (!prev_measured_pose_position_init_) {
-    prev_measured_pose_position_init_ = true;
-    prev_measured_pose_position_ = lbr_state.measured_cartesian_pose;
-    return true;
-  }
   const double &dt = lbr_state.sample_time;
   for (std::size_t i = 0; i < CART_POSE_TRANS_NUM; ++i) {
-    double diff = std::abs(prev_measured_pose_position_[i] - lbr_state.measured_cartesian_pose[i]);
+    double diff = std::abs(lbr_command.cartesian_pose[i] - lbr_state.measured_cartesian_pose[i]);
     if ((diff > 1e-6) && (diff / dt > parameters_.max_trans_vel)) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                           ColorScheme::ERROR << "Velocity not in limits for axis '"
                                              << CART_POSE_TRANS_NAME[i].data() << "'"
-                                             << " prev: " << prev_measured_pose_position_[i]
-                                             << " curr: " << lbr_state.measured_cartesian_pose[i]
+                                             << " prev: " << lbr_state.measured_cartesian_pose[i]
+                                             << " curr: " << lbr_command.cartesian_pose[i]
                                              << " dt: " << dt
                                              << " diff: " << diff
                                              << " -> vel=" << diff / dt
@@ -79,9 +64,25 @@ bool CommandGuardCartesian::command_in_velocity_limits_(const_idl_state_t_ref lb
       return false;
     }
   }
-  prev_measured_pose_position_ = lbr_state.measured_cartesian_pose;
+  // rotation
+  Quaternion prev = Quaternion(lbr_state.measured_cartesian_pose[3],
+                               lbr_state.measured_cartesian_pose[4],
+                               lbr_state.measured_cartesian_pose[5],
+                               lbr_state.measured_cartesian_pose[6]);
+  Quaternion curr = Quaternion(lbr_command.cartesian_pose[3],
+                               lbr_command.cartesian_pose[4],
+                               lbr_command.cartesian_pose[5],
+                               lbr_command.cartesian_pose[6]);
 
-  // TODO: calculate the rotation
+  double angle = abs(lbr_fri_ros2::Quaternion::rot_angle(prev, curr));
+  if((angle > 1e-6) && (angle / dt > parameters_.max_rot_vel)){
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                          ColorScheme::ERROR << "Angular velocity not in limit '"
+                                             << " -> vel=" << angle / dt
+                                             << " > limit(" << parameters_.max_rot_vel << ")"
+                                             << ColorScheme::ENDC);
+      return false;
+  }
   
   return true;
   /*

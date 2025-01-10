@@ -13,7 +13,7 @@ protected:
 public:
   CartesianPoseCommandInterface() = delete;
   CartesianPoseCommandInterface(
-    const double cart_pose_tau,
+    const double cart_pose_trans_tau,
     const CommandGuardParametersCartesian &command_guard_parameters,
     const std::string &command_guard_variant = "default");
 
@@ -21,7 +21,6 @@ public:
 
   void buffered_command_to_fri(fri_command_t_ref command, const_idl_state_t_ref state) override;
 
-  cart_pose_array_t last_valid_command_;
 };
 } // namespace lbr_fri_ros2
 #endif // LBR_FRI_ROS2__INTERFACES__CARTESIAN_POSE_COMMAND_HPP_

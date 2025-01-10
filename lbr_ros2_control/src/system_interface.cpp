@@ -22,6 +22,8 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
   state_interface_parameters.external_torque_tau = parameters_.external_torque_tau;
   state_interface_parameters.measured_torque_tau = parameters_.measured_torque_tau;
 
+  joint_overlay_ = parameters_.joint_overlay;
+
   try {
     if(parameters_.joint_overlay){
       lbr_fri_ros2::CommandGuardParametersJoint cgpj;
@@ -54,6 +56,7 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
       cgpc.max_trans_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_trans_acc").substr(1));
       cgpc.max_rot_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_vel").substr(1));
       cgpc.max_rot_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_acc").substr(1));
+      cgpc.max_jnt_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_jnt_vel").substr(1));
 
       async_client_ptr_ = std::make_shared<lbr_fri_ros2::AsyncClient>(
           parameters_.command_filter_tau,
@@ -150,9 +153,11 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
 
     state_interfaces.emplace_back(info_.joints[i].name, HW_IF_EXTERNAL_TORQUE,
                                   &hw_lbr_state_.external_torque[i]);
-    // TODO: Switch between JointOverlay and CartesianOverlay
-    // state_interfaces.emplace_back(info_.joints[i].name, HW_IF_IPO_JOINT_POSITION,
-    //                               &hw_lbr_state_.ipo_joint_position[i]);
+                                  
+    if(joint_overlay_){
+      state_interfaces.emplace_back(info_.joints[i].name, HW_IF_IPO_JOINT_POSITION,
+                                    &hw_lbr_state_.ipo_joint_position[i]);
+    }
 
     // additional velocity state interface
     state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_VELOCITY,
@@ -195,6 +200,7 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
 
   // Cartesian Interface
   if (cart_parameters_.enabled){
+    assert(!joint_overlay_);
     const auto &cart_gpio = info_.gpios[CART_GPIO_IDX];
     const auto &cart_sensor = info_.sensors[CART_SENSOR_IDX];
     state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_X,
@@ -211,8 +217,8 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
                                   &hw_lbr_state_.measured_cartesian_pose[5]);
     state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QZ,
                                   &hw_lbr_state_.measured_cartesian_pose[6]);
-    // state_interfaces.emplace_back(cart_gpio.name, HW_IF_MEASURED_REDUNDANCY_VALUE,
-    //                               &hw_lbr_state_.measured_redundancy_value);
+    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_REDUNDANCY_VALUE,
+                                  &hw_lbr_state_.measured_redundancy_value);
 
     state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_X,
                                   &hw_lbr_state_.ipo_cartesian_pose[0]);
@@ -228,9 +234,8 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
                                   &hw_lbr_state_.ipo_cartesian_pose[5]);
     state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_QZ,
                                   &hw_lbr_state_.ipo_cartesian_pose[6]);
-
-    // state_interfaces.emplace_back(cart_gpio.name, HW_IF_MEASURED_REDUNDANCY_VALUE,
-    //                               &hw_lbr_state_.ipo_redundancy_value);
+    state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_REDUNDANCY_VALUE,
+                                  &hw_lbr_state_.ipo_redundancy_value);
   }
 
   return state_interfaces;
@@ -246,7 +251,6 @@ std::vector<hardware_interface::CommandInterface> SystemInterface::export_comman
                                     &hw_lbr_command_.torque[i]);
   }
 
-  // Cartesian impedance control command interfaces
   const auto &wrench = info_.gpios[0];
   command_interfaces.emplace_back(wrench.name, HW_IF_FORCE_X, &hw_lbr_command_.wrench[0]);
   command_interfaces.emplace_back(wrench.name, HW_IF_FORCE_Y, &hw_lbr_command_.wrench[1]);
@@ -255,7 +259,7 @@ std::vector<hardware_interface::CommandInterface> SystemInterface::export_comman
   command_interfaces.emplace_back(wrench.name, HW_IF_TORQUE_Y, &hw_lbr_command_.wrench[4]);
   command_interfaces.emplace_back(wrench.name, HW_IF_TORQUE_Z, &hw_lbr_command_.wrench[5]);
 
-  // TODO: command_interface order matters?
+  // Cartesian impedance control command interfaces
   if(cart_parameters_.enabled){
     const auto &cart = info_.gpios[CART_GPIO_IDX];
     command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_X, &hw_lbr_command_.cartesian_pose[0]);
@@ -265,6 +269,7 @@ std::vector<hardware_interface::CommandInterface> SystemInterface::export_comman
     command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_QX, &hw_lbr_command_.cartesian_pose[4]);
     command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_QY, &hw_lbr_command_.cartesian_pose[5]);
     command_interfaces.emplace_back(cart.name, HW_IF_CARTESIAN_POSE_QZ, &hw_lbr_command_.cartesian_pose[6]);
+    command_interfaces.emplace_back(cart.name, HW_IF_REDUNDANCY_VALUE, &hw_lbr_command_.redundancy_value);
   }
   return command_interfaces;
 }
@@ -396,10 +401,7 @@ hardware_interface::return_type SystemInterface::read(const rclcpp::Time & /*tim
   hw_control_mode_ = static_cast<double>(hw_lbr_state_.control_mode);
   hw_time_stamp_sec_ = static_cast<double>(hw_lbr_state_.time_stamp_sec);
   hw_time_stamp_nano_sec_ = static_cast<double>(hw_lbr_state_.time_stamp_nano_sec);
-
-  // TODO:
-  // cartesian pose
-  // calculate from joint position?
+  hw_redundancy_strategy_ = static_cast<double>(hw_lbr_state_.redundancy_strategy);
 
   // additional velocity state interface
   compute_hw_velocity_();
@@ -513,6 +515,7 @@ bool SystemInterface::parse_parameters_(const hardware_interface::HardwareInfo &
 void SystemInterface::nan_command_interfaces_() {
   hw_lbr_command_.joint_position.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_command_.cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
+  hw_lbr_command_.redundancy_value = 4.0;
   hw_lbr_command_.torque.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_command_.wrench.fill(std::numeric_limits<double>::quiet_NaN());
 }
@@ -526,10 +529,12 @@ void SystemInterface::nan_state_interfaces_() {
   hw_lbr_state_.measured_torque.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_state_.commanded_torque.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_state_.external_torque.fill(std::numeric_limits<double>::quiet_NaN());
-  // TODO: Switch Overlay
-  // hw_lbr_state_.ipo_joint_position.fill(std::numeric_limits<double>::quiet_NaN());
+
+  hw_lbr_state_.ipo_joint_position.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_state_.ipo_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
   hw_lbr_state_.measured_cartesian_pose.fill(std::numeric_limits<double>::quiet_NaN());
+  hw_lbr_state_.measured_redundancy_value = std::numeric_limits<double>::quiet_NaN();
+  hw_lbr_state_.ipo_redundancy_value = std::numeric_limits<double>::quiet_NaN();
 
   hw_lbr_state_.sample_time = std::numeric_limits<double>::quiet_NaN();
   hw_lbr_state_.tracking_performance = std::numeric_limits<double>::quiet_NaN();
@@ -545,6 +550,7 @@ void SystemInterface::nan_state_interfaces_() {
   hw_control_mode_ = std::numeric_limits<double>::quiet_NaN();
   hw_time_stamp_sec_ = std::numeric_limits<double>::quiet_NaN();
   hw_time_stamp_nano_sec_ = std::numeric_limits<double>::quiet_NaN();
+  hw_redundancy_strategy_ = std::numeric_limits<double>::quiet_NaN();
 
   // additional velocity state interface
   hw_velocity_.fill(std::numeric_limits<double>::quiet_NaN());
@@ -767,8 +773,7 @@ bool SystemInterface::verify_cartesian_sensor_(){
   for (const auto &si : cart_sensor.state_interfaces) {
     if (si.name != HW_IF_MEASURED_CARTESIAN_POSE_X && si.name != HW_IF_MEASURED_CARTESIAN_POSE_Y && si.name != HW_IF_MEASURED_CARTESIAN_POSE_Z &&
         si.name != HW_IF_MEASURED_CARTESIAN_POSE_QX && si.name != HW_IF_MEASURED_CARTESIAN_POSE_QY && si.name != HW_IF_MEASURED_CARTESIAN_POSE_QZ &&
-        si.name != HW_IF_MEASURED_CARTESIAN_POSE_QW 
-        // && si.name != HW_IF_REDUNDANCY_VALUE_CONTROLLED && si.name != HW_IF_REDUNDANCY_VALUE
+        si.name != HW_IF_MEASURED_CARTESIAN_POSE_QW && si.name != HW_IF_MEASURED_REDUNDANCY_VALUE
         ) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                           lbr_fri_ros2::ColorScheme::ERROR
@@ -808,8 +813,7 @@ bool SystemInterface::verify_cartesian_gpio_(){
   for (const auto &si : cart_gpio.command_interfaces) {
     if (si.name != HW_IF_CARTESIAN_POSE_X && si.name != HW_IF_CARTESIAN_POSE_Y && si.name != HW_IF_CARTESIAN_POSE_Z &&
         si.name != HW_IF_CARTESIAN_POSE_QX && si.name != HW_IF_CARTESIAN_POSE_QY && si.name != HW_IF_CARTESIAN_POSE_QZ &&
-        si.name != HW_IF_CARTESIAN_POSE_QW
-        // && si.name != HW_IF_REDUNDANCY_VALUE_CONTROLLED && si.name != HW_IF_REDUNDANCY_VALUE
+        si.name != HW_IF_CARTESIAN_POSE_QW && si.name != HW_IF_REDUNDANCY_VALUE
         ) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                           lbr_fri_ros2::ColorScheme::ERROR
@@ -825,8 +829,7 @@ bool SystemInterface::verify_cartesian_gpio_(){
   for (const auto &si : cart_gpio.state_interfaces) {
     if (si.name != HW_IF_IPO_CARTESIAN_POSE_X && si.name != HW_IF_IPO_CARTESIAN_POSE_Y && si.name != HW_IF_IPO_CARTESIAN_POSE_Z &&
         si.name != HW_IF_IPO_CARTESIAN_POSE_QX && si.name != HW_IF_IPO_CARTESIAN_POSE_QY && si.name != HW_IF_IPO_CARTESIAN_POSE_QZ &&
-        si.name != HW_IF_IPO_CARTESIAN_POSE_QW 
-        // && si.name != HW_IF_REDUNDANCY_VALUE_CONTROLLED && si.name != HW_IF_REDUNDANCY_VALUE
+        si.name != HW_IF_IPO_CARTESIAN_POSE_QW && si.name != HW_IF_IPO_REDUNDANCY_VALUE
         ) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                           lbr_fri_ros2::ColorScheme::ERROR

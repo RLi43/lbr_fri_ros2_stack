@@ -16,8 +16,7 @@ LBRCartesianPoseCommandController::command_interface_configuration() const {
   interface_configuration.names.push_back(std::string(HW_IF_CARTESIAN_GPIO_PREFIX) + "/" + HW_IF_CARTESIAN_POSE_QX);
   interface_configuration.names.push_back(std::string(HW_IF_CARTESIAN_GPIO_PREFIX) + "/" + HW_IF_CARTESIAN_POSE_QY);
   interface_configuration.names.push_back(std::string(HW_IF_CARTESIAN_GPIO_PREFIX) + "/" + HW_IF_CARTESIAN_POSE_QZ);
-  // interface_configuration.names.push_back(std::string(HW_IF_CARTESIAN_SENSOR_PREFIX) + "/" + HW_IF_REDUNDANCY_VALUE_CONTROLLED);
-  // interface_configuration.names.push_back(std::string(HW_IF_CARTESIAN_SENSOR_PREFIX) + "/" + HW_IF_REDUNDANCY_VALUE);
+  interface_configuration.names.push_back(std::string(HW_IF_CARTESIAN_GPIO_PREFIX) + "/" + HW_IF_REDUNDANCY_VALUE);
   return interface_configuration;
 }
 
@@ -59,12 +58,9 @@ LBRCartesianPoseCommandController::update(const rclcpp::Time & /*time*/,
   for(std::size_t idx = 0; idx < lbr_fri_ros2::CARTESIAN_QUAT_DOF; ++idx){
     command_interfaces_[idx].set_value((*lbr_cartesian_pose_command)->cartesian_pose_quaternion[idx]);
   }
-  // command_interfaces_[lbr_fri_ros2::CARTESIAN_QUAT_DOF].set_value(
-  //   (*lbr_cartesian_pose_command)->redundancy_cmd
-  // );
-  // command_interfaces_[lbr_fri_ros2::CARTESIAN_QUAT_DOF + 1].set_value(
-  //   (*lbr_cartesian_pose_command)->reduncancy_value
-  // );
+  command_interfaces_[lbr_fri_ros2::CARTESIAN_QUAT_DOF].set_value(
+    (*lbr_cartesian_pose_command)->redundancy_value
+  );
 
   return controller_interface::return_type::OK;
 }
@@ -85,11 +81,11 @@ controller_interface::CallbackReturn LBRCartesianPoseCommandController::on_deact
 }
 
 void LBRCartesianPoseCommandController::configure_cartesian_names_() {
-  if (cart_names_.size() != lbr_fri_ros2::CARTESIAN_QUAT_DOF) {
+  if (cart_names_.size() != lbr_fri_ros2::CARTESIAN_QUAT_DOF + 1) {
     RCLCPP_ERROR(
         this->get_node()->get_logger(),
         "Number of cartesian names (%ld) does not match the number of cartesian cmd in the robot (%d).",
-        cart_names_.size(), lbr_fri_ros2::CARTESIAN_QUAT_DOF);
+        cart_names_.size(), lbr_fri_ros2::CARTESIAN_QUAT_DOF + 1);
     throw std::runtime_error("Failed to configure joint names.");
   }
   std::string robot_name = this->get_node()->get_parameter("robot_name").as_string();
@@ -101,6 +97,7 @@ void LBRCartesianPoseCommandController::configure_cartesian_names_() {
   cart_names_[4] = robot_name + "_C.QX";
   cart_names_[5] = robot_name + "_C.QY";
   cart_names_[6] = robot_name + "_C.QZ";
+  cart_names_[7] = robot_name + "_C.Redundancy_value";
 }
 } // namespace lbr_ros2_control
 

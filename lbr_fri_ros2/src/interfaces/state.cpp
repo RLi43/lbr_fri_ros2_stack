@@ -27,14 +27,13 @@ void StateInterface::set_state(const_fri_state_t_ref state) {
   if (state.getSessionState() == KUKA::FRI::ESessionState::COMMANDING_WAIT ||
       state.getSessionState() == KUKA::FRI::ESessionState::COMMANDING_ACTIVE) {      
 
-    // state_.ipo_redundancy_value = state.getIpoRedundancyValue();
-    // TODO: switch between joint overlay and cartesian overlay
     if(joint_overlay){      
       std::memcpy(state_.ipo_joint_position.data(), state.getIpoJointPosition(),
                   sizeof(double) * fri_state_t::NUMBER_OF_JOINTS);
     }else{
       std::memcpy(state_.ipo_cartesian_pose.data(), state.getIpoCartesianPose(),
                   sizeof(double) * CARTESIAN_QUAT_DOF);
+    state_.ipo_redundancy_value = state.getIpoRedundancyValue();
     }
   }
   std::memcpy(state_.measured_joint_position.data(), state.getMeasuredJointPosition(),
@@ -42,7 +41,7 @@ void StateInterface::set_state(const_fri_state_t_ref state) {
   std::memcpy(state_.measured_cartesian_pose.data(), state.getMeasuredCartesianPose(),
               sizeof(double) * CARTESIAN_QUAT_DOF);
               
-  // state_.measured_redundancy_value = state.getMeasuredRedundancyValue();
+  state_.measured_redundancy_value = state.getMeasuredRedundancyValue();
   
   state_.redundancy_strategy = state.getRedundancyStrategy();  
   state_.operation_mode = state.getOperationMode();
