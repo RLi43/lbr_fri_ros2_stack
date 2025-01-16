@@ -11,11 +11,11 @@ from lbr_fri_idl.msg import LBRCartesianPoseCommand, LBRState
 
 class CartesianSineOverlayNode(Node):
     def __init__(self, node_name: str) -> None:
-        super().__init__(node_name)
+        super().__init__(node_name, namespace='/lbr')
 
         self._eef_pose = [0.4, 0.0, 0.7, 0.5, 0.5, 0.5, 0.5]
 
-        self._amplitude = 10  # mm
+        self._amplitude = 50  # mm
         self._frequency = 0.25  # Hz
         self._phase = 0.0
         self._axis = 2 # z
@@ -44,11 +44,15 @@ class CartesianSineOverlayNode(Node):
             return
         if self._lbr_state is None:
             self._lbr_state = lbr_state
+            self._initial_pose = self._lbr_state.measured_cartesian_pose
+
         self._lbr_cartesian_pose_command.cartesian_pose_quaternion = deepcopy(
-            self._lbr_state.ipo_cartesian_pose
+            self._initial_pose
         )
-        print("ipo cart pose", self._lbr_state.ipo_cartesian_pose)
-        print("measured cart pose", self._lbr_state.measured_cartesian_pose)
+        self._lbr_cartesian_pose_command.redundancy_value = 4.0 # not set
+
+        print("measured cart pose", lbr_state.measured_cartesian_pose)
+        print("measured redundancy value", lbr_state.measured_redundancy_value)
 
         if lbr_state.session_state == 4:  # KUKA::FRI::COMMANDING_ACTIVE == 4
             # overlay sine wave on 4th joint

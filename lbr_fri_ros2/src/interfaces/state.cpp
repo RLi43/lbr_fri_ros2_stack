@@ -43,7 +43,6 @@ void StateInterface::set_state(const_fri_state_t_ref state) {
               
   state_.measured_redundancy_value = state.getMeasuredRedundancyValue();
   
-  state_.redundancy_strategy = state.getRedundancyStrategy();  
   state_.operation_mode = state.getOperationMode();
   state_.overlay_type = state.getOverlayType();
   state_.safety_state = state.getSafetyState();

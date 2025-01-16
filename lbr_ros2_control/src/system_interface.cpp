@@ -25,7 +25,7 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
   joint_overlay_ = parameters_.joint_overlay;
 
   try {
-    if(parameters_.joint_overlay){
+    if(joint_overlay_){
       lbr_fri_ros2::CommandGuardParametersJoint cgpj;
       for (std::size_t idx = 0; idx < system_info.joints.size(); ++idx) {
         cgpj.joint_names[idx] = system_info.joints[idx].name;
@@ -48,28 +48,27 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
       // TODO: pose as matrix
 
       for (std::size_t idx = 0; idx < 3; ++idx) {
-        // TODO: this substr(1) operation is stupid
-        cgpc.max_positions[idx] = std::stod(system_info.gpios[CART_GPIO_IDX].command_interfaces[idx].max.substr(1));
-        cgpc.min_positions[idx] = std::stod(system_info.gpios[CART_GPIO_IDX].command_interfaces[idx].min.substr(1));
+        cgpc.max_positions[idx] = std::stod(system_info.gpios[CART_GPIO_IDX].command_interfaces[idx].max);
+        cgpc.min_positions[idx] = std::stod(system_info.gpios[CART_GPIO_IDX].command_interfaces[idx].min);
       }
-      cgpc.max_trans_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_trans_vel").substr(1));
-      cgpc.max_trans_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_trans_acc").substr(1));
-      cgpc.max_rot_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_vel").substr(1));
-      cgpc.max_rot_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_acc").substr(1));
-      cgpc.max_jnt_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_jnt_vel").substr(1));
+      cgpc.max_trans_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_trans_vel"));
+      cgpc.max_trans_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_trans_acc"));
+      cgpc.max_rot_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_vel"));
+      cgpc.max_rot_acc = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_rot_acc"));
+      cgpc.max_jnt_vel = std::stod(system_info.gpios[CART_GPIO_IDX].parameters.at("max_jnt_vel"));
 
       async_client_ptr_ = std::make_shared<lbr_fri_ros2::AsyncClient>(
           parameters_.command_filter_tau,
           cgpc,
           parameters_.command_guard_variant, 
-          parameters_.use_cartesian_matrix, 
           state_interface_parameters, parameters_.open_loop);
     }
     app_ptr_ = std::make_unique<lbr_fri_ros2::App>(async_client_ptr_);
   } catch (const std::exception &e) {
     RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                         lbr_fri_ros2::ColorScheme::ERROR
-                            << "Failed to instantiate AsyncClient or App with: " << e.what()
+                            << "Failed to instantiate " << (joint_overlay_? "JointOverlay" : "CartesianOverlay")
+                            << " AsyncClient with: " << e.what()
                             << lbr_fri_ros2::ColorScheme::ENDC);
     return controller_interface::CallbackReturn::ERROR;
   }
@@ -79,35 +78,58 @@ SystemInterface::on_init(const hardware_interface::HardwareInfo &system_info) {
   nan_last_hw_states_();
 
   // setup force-torque estimator
-  std::transform(info_.sensors[1].parameters.at("enabled").begin(),
+  try {
+    std::transform(info_.sensors[1].parameters.at("enabled").begin(),
                  info_.sensors[1].parameters.at("enabled").end(),
                  info_.sensors[1].parameters.at("enabled").begin(),
                  ::tolower); // convert to lower case
-  ft_parameters_.enabled = info_.sensors[1].parameters.at("enabled") == "true";
-  ft_parameters_.update_rate = std::stoul(info_.sensors[1].parameters.at("update_rate"));
-  ft_parameters_.rt_prio = std::stoi(info_.sensors[1].parameters.at("rt_prio"));
-  ft_parameters_.chain_root = info_.sensors[1].parameters.at("chain_root");
-  ft_parameters_.chain_tip = info_.sensors[1].parameters.at("chain_tip");
-  ft_parameters_.damping = std::stod(info_.sensors[1].parameters.at("damping"));
-  ft_parameters_.force_x_th = std::stod(info_.sensors[1].parameters.at("force_x_th"));
-  ft_parameters_.force_y_th = std::stod(info_.sensors[1].parameters.at("force_y_th"));
-  ft_parameters_.force_z_th = std::stod(info_.sensors[1].parameters.at("force_z_th"));
-  ft_parameters_.torque_x_th = std::stod(info_.sensors[1].parameters.at("torque_x_th"));
-  ft_parameters_.torque_y_th = std::stod(info_.sensors[1].parameters.at("torque_y_th"));
-  ft_parameters_.torque_z_th = std::stod(info_.sensors[1].parameters.at("torque_z_th"));
-  if (ft_parameters_.enabled) {
-    ft_estimator_impl_ptr_ = std::make_shared<lbr_fri_ros2::FTEstimatorImpl>(
-        info_.original_xml, ft_parameters_.chain_root, ft_parameters_.chain_tip,
-        lbr_fri_ros2::cart_array_t{
-            ft_parameters_.force_x_th,
-            ft_parameters_.force_y_th,
-            ft_parameters_.force_z_th,
-            ft_parameters_.torque_x_th,
-            ft_parameters_.torque_y_th,
-            ft_parameters_.torque_z_th,
-        });
-    ft_estimator_ptr_ = std::make_unique<lbr_fri_ros2::FTEstimator>(ft_estimator_impl_ptr_,
-                                                                    ft_parameters_.update_rate);
+    ft_parameters_.enabled = info_.sensors[1].parameters.at("enabled") == "true";
+    ft_parameters_.update_rate = std::stoul(info_.sensors[1].parameters.at("update_rate"));
+    ft_parameters_.rt_prio = std::stoi(info_.sensors[1].parameters.at("rt_prio"));
+    ft_parameters_.chain_root = info_.sensors[1].parameters.at("chain_root");
+    ft_parameters_.chain_tip = info_.sensors[1].parameters.at("chain_tip");
+    ft_parameters_.damping = std::stod(info_.sensors[1].parameters.at("damping"));
+    ft_parameters_.force_x_th = std::stod(info_.sensors[1].parameters.at("force_x_th"));
+    ft_parameters_.force_y_th = std::stod(info_.sensors[1].parameters.at("force_y_th"));
+    ft_parameters_.force_z_th = std::stod(info_.sensors[1].parameters.at("force_z_th"));
+    ft_parameters_.torque_x_th = std::stod(info_.sensors[1].parameters.at("torque_x_th"));
+    ft_parameters_.torque_y_th = std::stod(info_.sensors[1].parameters.at("torque_y_th"));
+    ft_parameters_.torque_z_th = std::stod(info_.sensors[1].parameters.at("torque_z_th"));
+    if (ft_parameters_.enabled) {
+      ft_estimator_impl_ptr_ = std::make_shared<lbr_fri_ros2::FTEstimatorImpl>(
+          info_.original_xml, ft_parameters_.chain_root, ft_parameters_.chain_tip,
+          lbr_fri_ros2::cart_array_t{
+              ft_parameters_.force_x_th,
+              ft_parameters_.force_y_th,
+              ft_parameters_.force_z_th,
+              ft_parameters_.torque_x_th,
+              ft_parameters_.torque_y_th,
+              ft_parameters_.torque_z_th,
+          });
+      ft_estimator_ptr_ = std::make_unique<lbr_fri_ros2::FTEstimator>(ft_estimator_impl_ptr_,
+                                                                      ft_parameters_.update_rate);
+    }
+  }
+  catch (const std::out_of_range &e) {
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                        lbr_fri_ros2::ColorScheme::ERROR
+                            << "Failed to parse ft estimator parameters with: " << e.what()
+                            << lbr_fri_ros2::ColorScheme::ENDC);
+    return controller_interface::CallbackReturn::ERROR;
+  }
+  try{
+    std::transform(info_.gpios[CART_GPIO_IDX].parameters.at("enabled").begin(),
+                   info_.gpios[CART_GPIO_IDX].parameters.at("enabled").end(),
+                   info_.gpios[CART_GPIO_IDX].parameters.at("enabled").begin(),
+                 ::tolower); // convert to lower case
+    cart_parameters_.enabled = info_.gpios[CART_GPIO_IDX].parameters.at("enabled") == "true";
+  }
+  catch (const std::out_of_range &e) {
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                        lbr_fri_ros2::ColorScheme::ERROR
+                            << "Failed to parse cartesian interface parameters with: " << e.what()
+                            << lbr_fri_ros2::ColorScheme::ENDC);
+    return controller_interface::CallbackReturn::ERROR;
   }
 
   if (!verify_number_of_joints_()) {
@@ -199,27 +221,27 @@ std::vector<hardware_interface::StateInterface> SystemInterface::export_state_in
   }
 
   // Cartesian Interface
+  const auto &cart_sensor = info_.sensors[CART_SENSOR_IDX];
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_X,
+                                &hw_lbr_state_.measured_cartesian_pose[0]);
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_Y,
+                                &hw_lbr_state_.measured_cartesian_pose[1]);
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_Z,
+                                &hw_lbr_state_.measured_cartesian_pose[2]);
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QW,
+                                &hw_lbr_state_.measured_cartesian_pose[3]);
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QX,
+                                &hw_lbr_state_.measured_cartesian_pose[4]);
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QY,
+                                &hw_lbr_state_.measured_cartesian_pose[5]);
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QZ,
+                                &hw_lbr_state_.measured_cartesian_pose[6]);
+  state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_REDUNDANCY_VALUE,
+                                &hw_lbr_state_.measured_redundancy_value);
+
   if (cart_parameters_.enabled){
     assert(!joint_overlay_);
     const auto &cart_gpio = info_.gpios[CART_GPIO_IDX];
-    const auto &cart_sensor = info_.sensors[CART_SENSOR_IDX];
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_X,
-                                  &hw_lbr_state_.measured_cartesian_pose[0]);
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_Y,
-                                  &hw_lbr_state_.measured_cartesian_pose[1]);
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_Z,
-                                  &hw_lbr_state_.measured_cartesian_pose[2]);
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QW,
-                                  &hw_lbr_state_.measured_cartesian_pose[3]);
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QX,
-                                  &hw_lbr_state_.measured_cartesian_pose[4]);
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QY,
-                                  &hw_lbr_state_.measured_cartesian_pose[5]);
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_CARTESIAN_POSE_QZ,
-                                  &hw_lbr_state_.measured_cartesian_pose[6]);
-    state_interfaces.emplace_back(cart_sensor.name, HW_IF_MEASURED_REDUNDANCY_VALUE,
-                                  &hw_lbr_state_.measured_redundancy_value);
-
     state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_X,
                                   &hw_lbr_state_.ipo_cartesian_pose[0]);
     state_interfaces.emplace_back(cart_gpio.name, HW_IF_IPO_CARTESIAN_POSE_Y,
@@ -382,12 +404,13 @@ hardware_interface::return_type SystemInterface::read(const rclcpp::Time & /*tim
                               static_cast<KUKA::FRI::ESessionState>(hw_lbr_state_.session_state))) {
     RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                         lbr_fri_ros2::ColorScheme::ERROR
-                            << "LBR left COMMANDING_ACTIVE. Please re-run lbr_bringup"
+                            << "LBR left COMMANDING_ACTIVE."
                             << lbr_fri_ros2::ColorScheme::ENDC);
-    app_ptr_->request_stop();
-    app_ptr_->close_udp_socket();
-    ft_estimator_ptr_->request_stop();
-    return hardware_interface::return_type::ERROR;
+    // TODO: reset some parameters if necessary
+    // app_ptr_->request_stop();
+    // app_ptr_->close_udp_socket();
+    // ft_estimator_ptr_->request_stop();
+    // return hardware_interface::return_type::ERROR;
   }
 
   // state interfaces that require cast
@@ -444,6 +467,7 @@ bool SystemInterface::parse_parameters_(const hardware_interface::HardwareInfo &
       return false;
     }
     std::string client_command_mode = system_info.hardware_parameters.at("client_command_mode");
+    parameters_.joint_overlay = true;
     if (client_command_mode == "position") {
 #if FRI_CLIENT_VERSION_MAJOR == 1
       parameters_.client_command_mode = KUKA::FRI::EClientCommandMode::POSITION;
@@ -472,7 +496,7 @@ bool SystemInterface::parse_parameters_(const hardware_interface::HardwareInfo &
           rclcpp::get_logger(LOGGER_NAME),
           lbr_fri_ros2::ColorScheme::ERROR
               << "Expected client_command_mode 'position', 'torque', 'wrench' or 'cartesian<_pose, _matrix>' got '"
-              << lbr_fri_ros2::ColorScheme::BOLD << parameters_.client_command_mode << "'"
+              << lbr_fri_ros2::ColorScheme::BOLD << client_command_mode << "'"
               << lbr_fri_ros2::ColorScheme::ENDC);
       return false;
     }
@@ -662,18 +686,12 @@ bool SystemInterface::verify_sensors_() {
                       lbr_fri_ros2::ColorScheme::OKBLUE
                           << "Force-Torque Sensor is not enabled." << lbr_fri_ros2::ColorScheme::ENDC);
   }
-  if (cart_parameters_.enabled) {
-    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
-                      lbr_fri_ros2::ColorScheme::OKBLUE
-                          << "Cartesian Sensor is enabled." << lbr_fri_ros2::ColorScheme::ENDC);
-    if (!verify_cartesian_sensor_()) {
-      return false;
-    }
-  }
-  else{    
-    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
-                      lbr_fri_ros2::ColorScheme::OKBLUE
-                          << "Force-Torque Sensor is not enabled." << lbr_fri_ros2::ColorScheme::ENDC);
+  
+  RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                    lbr_fri_ros2::ColorScheme::OKBLUE
+                        << "Cartesian Sensor is enabled." << lbr_fri_ros2::ColorScheme::ENDC);
+  if (!verify_cartesian_sensor_()) {
+    return false;
   }
   return true;
 }

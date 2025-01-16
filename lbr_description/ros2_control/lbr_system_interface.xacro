@@ -92,80 +92,86 @@
                 </gpio>
 
                 <!-- Cartesian Interface -->
-                <xacro:if value="${system_config['cartesian_interface']['enabled']}">
-                    <sensor name="cartesian_sensor">
+                <sensor name="cartesian_sensor">                
+                    <state_interface name="measured_pose.x" />
+                    <state_interface name="measured_pose.y" />
+                    <state_interface name="measured_pose.z" />
+                    <state_interface name="measured_pose.qw" />
+                    <state_interface name="measured_pose.qx" />
+                    <state_interface name="measured_pose.qy" />
+                    <state_interface name="measured_pose.qz" />
+                    <state_interface name="measured_pose.redundancy_value" />
 
-                        <state_interface name="measured_pose.x" />
-                        <state_interface name="measured_pose.y" />
-                        <state_interface name="measured_pose.z" />
-                        <state_interface name="measured_pose.qw"/>
-                        <state_interface name="measured_pose.qx"/>
-                        <state_interface name="measured_pose.qy"/>
-                        <state_interface name="measured_pose.qz"/>
-                        <state_interface name="measured_pose.redundancy_value"/>
-
-                        <!-- TODO As Matrix
+                    <!-- TODO As Matrix
                         <state_interface name="measured_pose_matrix"/>
                         <state_interface name="ipo_pose_matrix"/> -->
-                    </sensor>
+                </sensor>
 
-                    <xacro:unless value="${system_config['cartesian_interface']['use_matrix_for_cartesian_pose']}">
-                    <gpio name="cartesian_pose_quat">        
-                        <param name="max_trans_vel">"${joint_limits['Cartesian']['translational']['velocity']}"</param>
-                        <param name="max_trans_acc">"${joint_limits['Cartesian']['translational']['acceleration']}"</param>
-                        <!-- <param name="max_trans_jerk">"${joint_limits['Cartesian']['translational']['jerk']}"</param> -->
-                        <param name="max_rot_vel">"${joint_limits['Cartesian']['rotational']['velocity']}"</param>
-                        <param name="max_rot_acc">"${joint_limits['Cartesian']['rotational']['acceleration']}"</param>
-                        <param name="max_jnt_vel">"${joint_limits['Cartesian']['redundancy']['velocity']}"</param>
-                        <!-- <param name="max_trans_jerk">"${joint_limits['Cartesian']['translational']['jerk']}"</param> -->
-                        <command_interface name="pose.x">
-                            <!-- very simple range check -->
-                            <!-- maybe add velocity... limit? -->
-                            <param name="min">"${joint_limits['Cartesian']['X']['lower']}"</param>
-                            <param name="max">"${joint_limits['Cartesian']['X']['upper']}"</param>
-                        </command_interface>
-                        <command_interface name="pose.y">
-                            <param name="min">"${joint_limits['Cartesian']['Y']['lower']}"</param>
-                            <param name="max">"${joint_limits['Cartesian']['Y']['upper']}"</param>
-                        </command_interface>
-                        <command_interface name="pose.z">
-                            <param name="min">"${joint_limits['Cartesian']['Z']['lower']}"</param>
-                            <param name="max">"${joint_limits['Cartesian']['Z']['upper']}"</param>
-                        </command_interface>
-                        
-                        <command_interface name="pose.qw">
-                            <param name="min">"-1"</param>
-                            <param name="max">"1"</param>
-                        </command_interface>
-                        <command_interface name="pose.qx">
-                            <param name="min">"-1"</param>
-                            <param name="max">"1"</param>
-                        </command_interface>
-                        <command_interface name="pose.qy">
-                            <param name="min">"-1"</param>
-                            <param name="max">"1"</param>
-                        </command_interface>
-                        <command_interface name="pose.qz">
-                            <param name="min">"-1"</param>
-                            <param name="max">"1"</param>
-                        </command_interface>
+                <xacro:unless
+                    value="${system_config['cartesian_interface']['use_matrix_for_cartesian_pose']}">
+                    <gpio name="cartesian_pose_quat">
+                        <param name="enabled">${system_config['cartesian_interface']['enabled']}</param>
+                        <xacro:if value="${system_config['cartesian_interface']['enabled']}">
+                            <param name="max_trans_vel">${joint_limits['Cartesian']['translational']['velocity']}</param>
+                            <param name="max_trans_acc">${joint_limits['Cartesian']['translational']['acceleration']}</param>
+                            <!-- <param
+                            name="max_trans_jerk">"${joint_limits['Cartesian']['translational']['jerk']}"</param> -->
+                            <param name="max_rot_vel">${joint_limits['Cartesian']['rotational']['velocity']}</param>
+                            <param name="max_rot_acc">${joint_limits['Cartesian']['rotational']['acceleration']}</param>
+                            <param name="max_jnt_vel">${joint_limits['Cartesian']['redundancy']['velocity']}</param>
+                            <!-- <param
+                            name="max_trans_jerk">"${joint_limits['Cartesian']['translational']['jerk']}"</param> -->
 
-                        <state_interface name="ipo_pose.x" />
-                        <state_interface name="ipo_pose.y" />
-                        <state_interface name="ipo_pose.z" />
-                        <state_interface name="ipo_pose.qw"/>
-                        <state_interface name="ipo_pose.qx"/>
-                        <state_interface name="ipo_pose.qy"/>
-                        <state_interface name="ipo_pose.qz"/>
-                        <state_interface name="ipo_pose.redundancy_value"/>
+                            <command_interface name="pose.x">
+                                <!-- very simple range check -->
+                                <!-- maybe add velocity... limit? -->
+                                <param name="min">${joint_limits['Cartesian']['X']['lower']}</param>
+                                <param name="max">${joint_limits['Cartesian']['X']['upper']}</param>
+                            </command_interface>
+                            <command_interface name="pose.y">
+                                <param name="min">${joint_limits['Cartesian']['Y']['lower']}</param>
+                                <param name="max">${joint_limits['Cartesian']['Y']['upper']}</param>
+                            </command_interface>
+                            <command_interface name="pose.z">
+                                <param name="min">${joint_limits['Cartesian']['Z']['lower']}</param>
+                                <param name="max">${joint_limits['Cartesian']['Z']['upper']}</param>
+                            </command_interface>
+
+                            <command_interface name="pose.qw">
+                                <param name="min">"-1"</param>
+                                <param name="max">"1"</param>
+                            </command_interface>
+                            <command_interface name="pose.qx">
+                                <param name="min">"-1"</param>
+                                <param name="max">"1"</param>
+                            </command_interface>
+                            <command_interface name="pose.qy">
+                                <param name="min">"-1"</param>
+                                <param name="max">"1"</param>
+                            </command_interface>
+                            <command_interface name="pose.qz">
+                                <param name="min">"-1"</param>
+                                <param name="max">"1"</param>
+                            </command_interface>
+
+                            <state_interface name="ipo_pose.x" />
+                            <state_interface name="ipo_pose.y" />
+                            <state_interface name="ipo_pose.z" />
+                            <state_interface name="ipo_pose.qw" />
+                            <state_interface name="ipo_pose.qx" />
+                            <state_interface name="ipo_pose.qy" />
+                            <state_interface name="ipo_pose.qz" />
+                            <state_interface name="ipo_pose.redundancy_value" />
+                        </xacro:if>
                     </gpio>
-                    </xacro:unless>
-                    <xacro:if value="${system_config['cartesian_interface']['use_matrix_for_cartesian_pose']}">
+                </xacro:unless>
+                <xacro:if
+                    value="${system_config['cartesian_interface']['use_matrix_for_cartesian_pose']}">
                     <!-- TODO -->
                     <gpio name="cartesian_pose_matrix">
-                        <command_interface name="transformation_matrix"/>
+                        <param name="enabled">${system_config['cartesian_interface']['enabled']}</param>
+                        <command_interface name="transformation_matrix" />
                     </gpio>
-                    </xacro:if>
                 </xacro:if>
             </xacro:if>
 

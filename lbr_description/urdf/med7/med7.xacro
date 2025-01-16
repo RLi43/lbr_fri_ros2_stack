@@ -23,7 +23,7 @@
     </joint>
 
     <!-- med -->
-    <xacro:med7
+    <xacro:lbr_robot
         robot_name="$(arg robot_name)"
         mode="$(arg mode)"
         system_config_path="$(arg system_config_path)" />

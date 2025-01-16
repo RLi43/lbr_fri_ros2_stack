@@ -69,9 +69,6 @@ struct EstimatedFTSensorParameters {
 struct CartesianParameters // as a sensor
 {
   bool enabled{true};
-
-  std::uint16_t update_rate{100}; // up to FRI speed
-  int32_t rt_prio{30};
 }; 
 
 class SystemInterface : public hardware_interface::SystemInterface {
@@ -93,7 +90,7 @@ protected:
   static constexpr uint8_t CARTESIAN_SENSOR_SIZE = 7; // (7[quat]) * 2[ipo, measured] + 1+2(redundancy) TODO: support for pose as matrix
   static constexpr uint8_t LBR_FRI_GPIOS = 2; // Wrench, Cartesian
   // TODO: only one GPIO should be activated
-  static constexpr uint8_t WRENCH_GPIO_IDX = 1;
+  static constexpr uint8_t WRENCH_GPIO_IDX = 0;
   static constexpr uint8_t CART_GPIO_IDX = 1;
   static constexpr uint8_t WRENCH_GPIO_SIZE = 1;
   static constexpr uint8_t CARTESIAN_GPIO_SIZE = 1; 
